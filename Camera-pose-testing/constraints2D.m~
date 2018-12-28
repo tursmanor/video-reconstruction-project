@@ -7,6 +7,7 @@ global maxPosy
 global minPosy
 global maxVelocity
 global maxAcceleration
+global constraints
 
 % Calculate the timestep
 sim_time = x(1);
@@ -25,49 +26,54 @@ accs(:,2) = x(2 + gridN * 5 : end);
 % -max(abs(positions(:,1) - 5),abs(positions(:,2) - 5)) + 2]
 
 % get lines for cam's fov
-pt = [3 1];
-ptLeft = [2 4];
-ptRight = [4 4];
+pt = [6 1];
+ptLeft = [5 4];
+ptRight = [7 4];
 slopeLeft = (ptLeft(2) - pt(2)) / (ptLeft(1) - pt(1));
 slopeRight = (ptRight(2) - pt(2)) / (ptRight(1) - pt(1));
+% no position constraints
+if (constraints == 0)
+    c = [(maxVelocity * -1 * ones(gridN,1)) - sqrt(vels(:,1).^2 + vels(:,2).^2);     % max vel component constraint
+        (maxAcceleration * -1 * ones(gridN,1)) - sqrt(accs(:,1).^2 + accs(:,2).^2)]; % max acc component constraint
+else
+    c = [(maxVelocity * -1 * ones(gridN,1)) - sqrt(vels(:,1).^2 + vels(:,2).^2);     % max vel component constraint
+        (maxAcceleration * -1 * ones(gridN,1)) - sqrt(accs(:,1).^2 + accs(:,2).^2); % max acc component constraint
+        max(positions(:,2),pt(2)) + (slopeLeft * (max(positions(:,1),pt(1)) - pt(1))) - pt(2);     % left line
+        max(positions(:,2),pt(2)) - (slopeRight * (max(positions(:,1),pt(1)) - pt(1))) - pt(2)];   % right line
+end
 
-c = [(maxVelocity * -1 * ones(gridN,1)) - sqrt(vels(:,1).^2 + vels(:,2).^2);     % max vel component constraint
-     (maxAcceleration * -1 * ones(gridN,1)) - sqrt(accs(:,1).^2 + accs(:,2).^2); % max acc component constraint
-     max(positions(:,2),pt(2)) + (slopeLeft * (max(positions(:,1),pt(1)) - pt(1))) - pt(2);     % left line
-     max(positions(:,2),pt(2)) - (slopeRight * (max(positions(:,1),pt(1)) - pt(1))) - pt(2)];   % right line
- 
 %% Enforce smoothness
 % Constrain initial position and velocity to be zero
-ceq = [positions(1,1) - minPosx; 
-       positions(1,2) - minPosy;
-       vels(1,1);
-       vels(1,2)];
+ceq = [positions(1,1) - minPosx;
+    positions(1,2) - minPosy;
+    vels(1,1);
+    vels(1,2)];
 
 for i = 1 : length(positions) - 1
     
     % The state at the beginning of the time int
-    x_i = [positions(i,1); 
-           positions(i,2);
-           vels(i,1);
-           vels(i,2)];
+    x_i = [positions(i,1);
+        positions(i,2);
+        vels(i,1);
+        vels(i,2)];
     
     % What the state should be at the start of the next time int
     x_n = [positions(i+1,1);
-           positions(i+1,2);
-           vels(i+1,1);
-           vels(i+1,2)];
+        positions(i+1,2);
+        vels(i+1,1);
+        vels(i+1,2)];
     
     % The time derivative of the state at the beginning of the time int
-    xdot_i = [vels(i,1); 
-              vels(i,2);
-              accs(i,1);
-              accs(i,2)];
+    xdot_i = [vels(i,1);
+        vels(i,2);
+        accs(i,1);
+        accs(i,2)];
     
     % The time derivative of the state at the end of the time int
     xdot_n = [vels(i+1,1);
-              vels(i+1,2);
-              accs(i+1,1);
-              accs(i+1,2)];
+        vels(i+1,2);
+        accs(i+1,1);
+        accs(i+1,2)];
     
     % The end state of the time interval calculated using quadrature
     xend = x_i + delta_time * (xdot_i + xdot_n) / 2;
@@ -78,9 +84,9 @@ for i = 1 : length(positions) - 1
 end
 
 % Constrain end position to 0 and end velocity to 1
-ceq = [ceq ; 
-       positions(end,1) - maxPosx;
-       positions(end,2) - maxPosy;
-       vels(end,1);
-       vels(end,2)];
+ceq = [ceq ;
+    positions(end,1) - maxPosx;
+    positions(end,2) - maxPosy;
+    vels(end,1);
+    vels(end,2)];
 end

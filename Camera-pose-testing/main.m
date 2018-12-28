@@ -12,7 +12,7 @@ f = [4; 3];
 % rotation and translation matrix
 % theta in (-pi/2, pi/2)
 theta = 5*pi/4;
-translation = [3; 2];
+translation = [5; 2];
 R = [cos(theta) -sin(theta);
     sin(theta) cos(theta)];
 
@@ -40,6 +40,9 @@ rRange = sceneSize(1):line(1,3);
 %axis(sceneSize);
 
 %% Energy minimization
+camConst = [5 4; 6 2; 7 4]; %left pt, center pt, right pt
 
+optimal = pathOpt2D(line(:,2)', rotLine(:,2)', 0);
+optimal2 = pathOpt2D(line(:,2)', rotLine(:,2)', camConst);
 
 
