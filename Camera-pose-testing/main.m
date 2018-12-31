@@ -31,18 +31,14 @@ rotF = rotF + line(:,2) + translation;
 
 % test fov
 makeLine = @(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
-lRange = line(1,1):sceneSize(2);
-rRange = sceneSize(1):line(1,3);
 
 % plot results
-%drawCamera(line,makeLine,sceneSize,f);
-%drawCamera(rotLine,makeLine,sceneSize,rotF);
-%axis(sceneSize);
+drawCamera(line,makeLine,sceneSize,f);
+drawCamera(rotLine,makeLine,sceneSize,rotF);
 
 %% Energy minimization
-camConst = [5 4; 6 2; 7 4]; %left pt, center pt, right pt
-
-optimal = pathOpt2D(line(:,2)', rotLine(:,2)', 0);
-optimal2 = pathOpt2D(line(:,2)', rotLine(:,2)', camConst);
-
+% camConst = [5 4; 6 2; 7 4]; %left pt, center pt, right pt
+% 
+% optimal = pathOpt2D(line(:,2)', rotLine(:,2)', 0);
+% optimal2 = pathOpt2D(line(:,2)', rotLine(:,2)', camConst);
 
