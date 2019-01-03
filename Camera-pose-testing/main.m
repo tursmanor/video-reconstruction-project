@@ -1,44 +1,96 @@
 close all; clearvars;
 
-%% Setting up cameras 
-% define scene size
-sceneSize = [0 10 0 10];
+%% Setup
+load dataset.mat
 
-% define line camera: [endpoint, mid, endpoint]
-line = [3 4 5;
-        2 2 2];
-f = [4; 3];
+n = size(dataset,2);    % num shots
+out = struct('cam',0, ...
+    'pos',zeros(2,3), ...
+    'f',zeros(1,2), ...
+    'shots',zeros(n,1));
 
-% rotation and translation matrix
-% theta in (-pi/2, pi/2)
-theta = 5*pi/4;
-translation = [5; 2];
-R = [cos(theta) -sin(theta);
-    sin(theta) cos(theta)];
+% first two frames are cams 1 and 2
+out(1).cam = 1;
+[out(1).pos,out(1).f] = avgCamera(dataset(1).pos,dataset(1).f);
+out(1).shots(1) = 1;
 
-% move camera to origin and rotate
-shift = repmat(line(:,2),[1 3]);
-centeredLine = line - shift;
-rotLine = [R * centeredLine(:,1) ...
-    R * centeredLine(:,2) ...
-    R * centeredLine(:,3)];
-centeredF = f - line(:,2);
-rotF = R * centeredF;
+out(2).cam = 2;
+[out(2).pos,out(2).f] = avgCamera(dataset(2).pos,dataset(2).f);
+out(2).shots(2) = 1;
 
-% move back and apply translation
-rotLine = rotLine + shift + repmat(translation,[1 3]);
-rotF = rotF + line(:,2) + translation;
+cams = [1,2];   % active cameras in scene
+ind = [1,2];    % indices where previous cameras were found (camera 1 was
+% last at index 1 of out, etc.)
 
-% test fov
-makeLine = @(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
+%% Cluster assignments
+for i=3:n
+    i
+    prevCam = out(i-1).cam;
+    
+    % get average position and focal length for camera
+    curData = dataset(i);
+    [avgP,avgF] = avgCamera(curData.pos,curData.f);
+    
+    % move all current cameras to new position
+    opt = inf;
+    for j=cams
+        
+        if (j == prevCam)
+            continue;
+        else
+            
+            constrPos = out(ind(prevCam)).pos;
+            constrF = out(ind(prevCam)).f;
+            constraint = [constrPos(:,3)'; ...
+                         [constrPos(1,2) constrF(2)];...
+                          constrPos(:,1)'];
+            
+            [curOpt,msg] = pathOpt2D(out(ind(j)).pos(:,2)', ...
+                                     avgP(:,2)', ...
+                                     constraint);
+        end
+        
+        if ((curOpt(1) < opt(1)) && ...
+           (sum(msg.message(1:32) == 'Converged to an infeasible point'))/32 ~= 1)
+            opt = curOpt;
+            bestCam = j;
+        end
+        
+    end
+    
+    % check versus some time threshold to determine whether or not to
+    % assign shot to an existing camera or a new camera
+    thresh = 5;
+    if (opt(1) < thresh)
+        
+        out(i).cam = bestCam;
+        ind(bestCam) = i;
+    else
+        cams = [cams cams(end)+1];
+        ind = [ind i];
+        out(i).cam = cams(end);
+        
+    end
+    
+    out(i).pos = avgP;
+    out(i).f = avgF;
+    out(i).shots(i) = 1;
+    
+end
 
-% plot results
-drawCamera(line,makeLine,sceneSize,f);
-drawCamera(rotLine,makeLine,sceneSize,rotF);
 
-%% Energy minimization
-% camConst = [5 4; 6 2; 7 4]; %left pt, center pt, right pt
-% 
-% optimal = pathOpt2D(line(:,2)', rotLine(:,2)', 0);
-% optimal2 = pathOpt2D(line(:,2)', rotLine(:,2)', camConst);
+function [avgPos, avgF] = avgCamera(pos, f)
 
+avgPos = zeros(2,3);
+for i=1:2:size(pos,1)
+    avgPos = avgPos + pos(i:i+1,:);
+end
+avgPos = avgPos / (size(pos,1)/2);
+
+avgF = zeros(1,2);
+for i=1:size(f,1)
+    avgF = avgF + f(i,:);
+end
+avgF = avgF / size(f,1);
+
+end

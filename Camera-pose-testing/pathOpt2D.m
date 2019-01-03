@@ -1,4 +1,9 @@
-function [optimal] = pathOpt2D(initPos,endPos,camConst)
+function [optimal,out] = pathOpt2D(initPos,endPos,camConst)
+% examples of use:
+% camConst = [5 4; 6 2; 7 4]; %left pt, center pt, right pt
+% optimal = pathOpt2D(line(:,2)', rotLine(:,2)', 0);
+% optimal2 = pathOpt2D(line(:,2)', rotLine(:,2)', camConst);
+
 %% 2d version
 % Setup
 
@@ -42,11 +47,11 @@ ub = [Inf;
 % Options for fmincon
 options = optimoptions(@fmincon, 'TolFun', 0.00000001, 'MaxIter',...
     1000000, 'MaxFunEvals', 1000000, 'DiffMinChange',...
-    0.001, 'Algorithm', 'sqp', 'PlotFcn', @plotPos2D);
+    0.001, 'Algorithm', 'sqp');%, 'PlotFcn', @plotPos2D);
 
 %% Brute force global optimization
 % 70 converges in 2min for squares
-iterations = 10;
+iterations = 5;%10;
 bestTime = inf;
 tic;
 for n=1:iterations
@@ -85,25 +90,25 @@ positions(:,2) = optimal(2 + gridN : 1 + gridN * 2);
 
 %% Plot results
 
-if (constraints ~= 0)
-    [~,~,~,~,~,leftLine,rightLine] = makeLines(camConst);
-    
-    figure();
-    plot(positions(:,1),positions(:,2));
-    title('x Position vs y Position');
-    xlabel('x Position (m)');
-    ylabel('y Position (m)'); hold on;
-    plot(0:camConst(2,1),leftLine(0:camConst(2,1))); hold on;
-    plot(camConst(2,1):10,rightLine(camConst(2,1):10)); hold on;
-    axis([0 10 0 10]);
-    
-else
-    figure();
-    plot(positions(:,1),positions(:,2));
-    title('x Position vs y Position');
-    xlabel('x Position (m)');
-    ylabel('y Position (m)'); hold on;
-    axis([0 10 0 10]);
-end
+% if (constraints ~= 0)
+%     [~,~,~,~,~,leftLine,rightLine] = makeLines(camConst);
+%     
+%     figure();
+%     plot(positions(:,1),positions(:,2));
+%     title('x Position vs y Position');
+%     xlabel('x Position (m)');
+%     ylabel('y Position (m)'); hold on;
+%     plot(0:camConst(1,1),leftLine(0:camConst(1,1))); hold on;
+%     plot(camConst(3,1):10,rightLine(camConst(3,1):10)); hold on;
+%     axis([0 10 0 10]);
+%     
+% else
+%     figure();
+%     plot(positions(:,1),positions(:,2));
+%     title('x Position vs y Position');
+%     xlabel('x Position (m)');
+%     ylabel('y Position (m)'); hold on;
+%     axis([0 10 0 10]);
+% end
 
 end

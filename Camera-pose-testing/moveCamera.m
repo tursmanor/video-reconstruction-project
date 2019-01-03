@@ -5,7 +5,8 @@ function [rotL,rotF] = moveCamera(line, f, t)
 f = [f(1);f(2)];
 
 % rotation and translation matrix
-theta = 2 * pi * rand(1,1);
+% rotate in (-pi/2, pi/2) so the cameras face "up" towards the set
+theta = (-pi/2) + ((pi/2) - (-pi/2)) * rand(1,1);
 R = [cos(theta) -sin(theta);
     sin(theta) cos(theta)];
 translation = t; 

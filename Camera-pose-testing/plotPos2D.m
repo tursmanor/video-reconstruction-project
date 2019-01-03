@@ -27,8 +27,8 @@ switch state
             plot(posY,posX); hold on;
             ylabel('pos y'); hold on;
             xlabel('pos x'); hold on;
-            ylim([minPosy maxPosy]); hold on;
-            xlim([minPosx maxPosx]); hold on;
+            ylim(sort([minPosy maxPosy])); hold on;
+            xlim(sort([minPosx maxPosx])); hold on;
         else
             plot(posY,posX); hold on;
             %pause(0.5);

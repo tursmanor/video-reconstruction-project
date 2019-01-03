@@ -33,6 +33,10 @@ else
     % get lines for cam's fov
     [pt,~,~,slopeL,slopeR,~,~] = makeLines(constraints);
     
+    % we expect the left line to have a neg slope, right line a pos slope
+    if (slopeL > 0), slopeL = slopeL * -1; end
+    if (slopeR < 0), slopeR = slopeR * -1; end
+    
     c = [(maxVelocity * -1 * ones(gridN,1)) - sqrt(vels(:,1).^2 + vels(:,2).^2);     % max vel component constraint
         (maxAcceleration * -1 * ones(gridN,1)) - sqrt(accs(:,1).^2 + accs(:,2).^2); % max acc component constraint
         max(positions(:,2),pt(2)) + (slopeL * (max(positions(:,1),pt(1)) - pt(1))) - pt(2);     % left line
