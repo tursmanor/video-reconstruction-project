@@ -32,5 +32,5 @@ rotF = rotF + line(:,2) + translation;
 makeLine = @(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
 
 % plot results
-drawCamera(line,makeLine,sceneSize,f);
-drawCamera(rotLine,makeLine,sceneSize,rotF);
+[~] = drawCamera(line,makeLine,sceneSize,f,'red');
+[~] = drawCamera(rotLine,makeLine,sceneSize,rotF,'blue');

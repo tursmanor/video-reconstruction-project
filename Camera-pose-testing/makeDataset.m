@@ -8,7 +8,7 @@ close all; clearvars;
 % sceneSize is set size
 % camera can only move within circle rad 4 between frames
 % cameras must all be pointing at the set, aka the top line of the scene
-
+% hard code initial positions of all 4 cameras to spread them out
 n = 10;
 frameCount = 30;
 k = 4;
@@ -16,7 +16,7 @@ sceneSize = [2 9; 2 9]; % middle point can't be at 1 or 10
 sensorWidth = 2;
 fAll = [1 1 1 1]; % focal lengths of all four cameras
 camPositions = zeros(k*2,3); % keep track of where cameras are in space
-radius = 4;
+radius = 2;
 
 % dataset structure
 dataset = struct('frame',zeros(frameCount,1),'pos',zeros(frameCount * 2,3), ...
@@ -47,13 +47,13 @@ for curShot = 1:n
                                               dataset,fAll,sensorWidth,curCam,frameCount);
 
   %testing
-  if (indx ~= 0)
-      figure;
-      scatter(dataset(indx).pos(1,2),dataset(indx).pos(2,2)); hold on;
-      viscircles([dataset(indx).pos(1,2),dataset(indx).pos(2,2)],radius); hold on;
-      scatter(dataset(curShot).pos(1,2),dataset(curShot).pos(2,2));
-      pause(1);
-  end
+%   if (indx ~= 0)
+%       figure;
+%       scatter(dataset(indx).pos(1,2),dataset(indx).pos(2,2)); hold on;
+%       viscircles([dataset(indx).pos(1,2),dataset(indx).pos(2,2)],radius); hold on;
+%       scatter(dataset(curShot).pos(1,2),dataset(curShot).pos(2,2));
+%       pause(1);
+%   end
 
 end
 
@@ -87,7 +87,16 @@ function [pos,f] = makeCameraPosition(prevInd,radius,sceneSize,dataset,fAll,sens
 % assumes camera is still with some jiggling for each shot
 
 if (prevInd == 0)
-    position = [randi(sceneSize(1,:)) randi(sceneSize(2,:))];
+    % camera has not shown up in scene before
+    if (cam == 1)
+        position = [1 8];
+    elseif (cam == 2)
+        position = [5 5];
+    elseif (cam == 3)
+        position = [9 8];
+    else
+        position = [5 1];
+    end
 else
     prevPos = dataset(prevInd).pos;
     [x,y] = randPtInCircle(prevPos(1,2),prevPos(2,2),radius);

@@ -22,6 +22,9 @@ cams = [1,2];   % active cameras in scene
 ind = [1,2];    % indices where previous cameras were found (camera 1 was
 % last at index 1 of out, etc.)
 
+% for testing
+numInfeasible = zeros(2,n);
+
 %% Cluster assignments
 for i=3:n
     i
@@ -30,6 +33,9 @@ for i=3:n
     % get average position and focal length for camera
     curData = dataset(i);
     [avgP,avgF] = avgCamera(curData.pos,curData.f);
+    
+    % testing
+    numInfeasible(2,i) = size(cams,2);
     
     % move all current cameras to new position
     opt = inf;
@@ -55,7 +61,12 @@ for i=3:n
             opt = curOpt;
             bestCam = j;
         end
-        
+    
+        % for testing
+        if ((sum(msg.message(1:32) == 'Converged to an infeasible point'))/32 ~= 1)
+            numInfeasible(1,i) = numInfeasible(i) + 1;
+        end
+    
     end
     
     % check versus some time threshold to determine whether or not to
@@ -68,8 +79,7 @@ for i=3:n
     else
         cams = [cams cams(end)+1];
         ind = [ind i];
-        out(i).cam = cams(end);
-        
+        out(i).cam = cams(end);   
     end
     
     out(i).pos = avgP;
@@ -79,18 +89,3 @@ for i=3:n
 end
 
 
-function [avgPos, avgF] = avgCamera(pos, f)
-
-avgPos = zeros(2,3);
-for i=1:2:size(pos,1)
-    avgPos = avgPos + pos(i:i+1,:);
-end
-avgPos = avgPos / (size(pos,1)/2);
-
-avgF = zeros(1,2);
-for i=1:size(f,1)
-    avgF = avgF + f(i,:);
-end
-avgF = avgF / size(f,1);
-
-end
