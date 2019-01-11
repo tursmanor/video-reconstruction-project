@@ -17,6 +17,7 @@ sensorWidth = 2;
 fAll = [1 1 1 1]; % focal lengths of all four cameras
 camPositions = zeros(k*2,3); % keep track of where cameras are in space
 radius = 2;
+makeLine = @(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
 
 % dataset structure
 dataset = struct('frame',zeros(frameCount,1),'pos',zeros(frameCount * 2,3), ...
@@ -38,23 +39,94 @@ end
 
 % calculate possible positions based on radius of allowed movement
 for curShot = 1:n
+ 
     dataset(curShot).frame = (1:frameCount)';
-    curCam = dataset(curShot).gtCam;
-    indx = getPrevCamShot(curCam,curShot,dataset);
+    badPosition = 1;
     
-    [dataset(curShot).pos, ...
-     dataset(curShot).f] = makeCameraPosition(indx,radius,sceneSize, ...
-                                              dataset,fAll,sensorWidth,curCam,frameCount);
+    while (badPosition)
+       
+        curCam = dataset(curShot).gtCam;
+        indx = getPrevCamShot(curCam,curShot,dataset);
+        [pos,f] = makeCameraPosition(indx,radius,sceneSize,dataset,fAll,sensorWidth,curCam,frameCount);
+        [avgP,avgF] = avgCamera(pos,f);
+      
+        % check that we're not in the fov of the active camera-- if we are,
+        % change gt camera and run again
+        if (curShot > 1)
+            
+            [constrP,constrF] = avgCamera(dataset(curShot-1).pos,dataset(curShot-1).f);
+            constraints = [constrP(:,3)';constrF;constrP(:,1)'];
+            [pt,~,~,slopeL,slopeR,~,~] = makeLines(constraints);
 
-  %testing
-%   if (indx ~= 0)
-%       figure;
-%       scatter(dataset(indx).pos(1,2),dataset(indx).pos(2,2)); hold on;
-%       viscircles([dataset(indx).pos(1,2),dataset(indx).pos(2,2)],radius); hold on;
-%       scatter(dataset(curShot).pos(1,2),dataset(curShot).pos(2,2));
-%       pause(1);
-%   end
+            c = [max(avgP(2,:),pt(2)) + (-slopeL * (avgP(1,:) - pt(1))) - pt(2);     % left line
+                max(avgP(2,:),pt(2)) - (slopeR * (avgP(1,:) - pt(1))) - pt(2)];   % right line
 
+            % check if near vertical lines-- only have to deal with
+            % vertical instead of vertical and horizontal since the fov
+            % lines will be perpendicular
+            if (slopeL > 10)
+                if all(avgP(:,1) < constrF') || (avgP(2,1) > constrF(2))
+                    c(1,1) = -1;
+                end
+                 if all(avgP(:,2) < constrF') || (avgP(2,2) > constrF(2))
+                    c(1,2) = -1;
+                 end
+                 if all(avgP(:,3) < constrF') || (avgP(2,3) > constrF(2))
+                    c(1,3) = -1;
+                end
+            elseif (slopeR > 10)
+                if all(avgP(:,1) < constrF') || (avgP(2,1) > constrF(2))
+                    c(2,1) = -1;
+                end
+                 if all(avgP(:,2) < constrF') || (avgP(2,2) > constrF(2))
+                    c(2,2) = -1;
+                 end
+                 if all(avgP(:,3) < constrF') || (avgP(2,3) > constrF(2))
+                    c(2,3) = -1;
+                 end
+            end
+            
+            % testing
+%             fig = figure(1);
+%             [~] = drawCamera(avgP,makeLine,[0 10 0 10],avgF,'red'); hold on;
+%             [~] = drawCamera(constrP,makeLine,[0 10 0 10],constrF,'blue'); hold on;
+%             axis([0 10 0 10]);
+%             pause(3);
+%             clf(fig);
+            
+            % change gt camera if current pos is bad, where the pos is bad
+            % if there isn't at least one negative value in each (x,y) point
+            if (sum((c(1,:) <= 0) + (c(2,:) <= 0)) >= 3)
+                badPosition = 0;
+                %disp('GOOD');
+            else
+                %disp('BAD');
+                newGtCam = randi([1 k]);
+                
+                while (newGtCam == dataset(curShot-1).gtCam)
+                    newGtCam = randi([1 k]);
+                end
+                
+                dataset(curShot).gtCam = newGtCam;
+            end  
+        else
+            break;
+        end
+        
+    end
+    
+    dataset(curShot).pos = pos;
+    dataset(curShot).f = f;
+    
+    %testing
+    %   if (indx ~= 0)
+    %       figure;
+    %       scatter(dataset(indx).pos(1,2),dataset(indx).pos(2,2)); hold on;
+    %       viscircles([dataset(indx).pos(1,2),dataset(indx).pos(2,2)],radius); hold on;
+    %       scatter(dataset(curShot).pos(1,2),dataset(curShot).pos(2,2));
+    %       pause(1);
+    %   end
+    
 end
 
 save('dataset','dataset');
