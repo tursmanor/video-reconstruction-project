@@ -17,7 +17,7 @@ sensorWidth = 2;
 fAll = [1 1 1 1]; % focal lengths of all four cameras
 camPositions = zeros(k*2,3); % keep track of where cameras are in space
 radius = 2;
-makeLine = @(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
+makeLine =@(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
 
 % dataset structure
 dataset = struct('frame',zeros(frameCount,1),'pos',zeros(frameCount * 2,3), ...
@@ -39,68 +39,65 @@ end
 
 % calculate possible positions based on radius of allowed movement
 for curShot = 1:n
- 
+    
     dataset(curShot).frame = (1:frameCount)';
     badPosition = 1;
     
     while (badPosition)
-       
+        
         curCam = dataset(curShot).gtCam;
         indx = getPrevCamShot(curCam,curShot,dataset);
         [pos,f] = makeCameraPosition(indx,radius,sceneSize,dataset,fAll,sensorWidth,curCam,frameCount);
         [avgP,avgF] = avgCamera(pos,f);
-      
+        
         % check that we're not in the fov of the active camera-- if we are,
         % change gt camera and run again
         if (curShot > 1)
             
             [constrP,constrF] = avgCamera(dataset(curShot-1).pos,dataset(curShot-1).f);
-            constraints = [constrP(:,3)';constrF;constrP(:,1)'];
-            [pt,~,~,slopeL,slopeR,~,~] = makeLines(constraints);
-
-            c = [max(avgP(2,:),pt(2)) + (-slopeL * (avgP(1,:) - pt(1))) - pt(2);     % left line
-                max(avgP(2,:),pt(2)) - (slopeR * (avgP(1,:) - pt(1))) - pt(2)];   % right line
-
-            % check if near vertical lines-- only have to deal with
-            % vertical instead of vertical and horizontal since the fov
-            % lines will be perpendicular
-            if (slopeL > 10)
-                if all(avgP(:,1) < constrF') || (avgP(2,1) > constrF(2))
-                    c(1,1) = -1;
+            badPosition = isBadPosition([avgP avgF'],constrP,constrF);
+            
+            % if current pos is good, make sure no other cameras are in its
+            % fov
+            if (~badPosition)
+                
+                blocked = 0;
+                
+                for cam = 1:k
+                    if (cam == curCam)
+                        continue;
+                    end
+                    
+                    indx = getPrevCamShot(cam,curShot,dataset);
+                    
+                    % current cam is on the set
+                    if (indx ~= 0)
+                        [camPos,camF] = avgCamera(dataset(indx).pos,dataset(indx).f);
+                        blocked = blocked + isBadPosition([camPos camF'],avgP,avgF);
+                        
+                        % testing
+                        %                          fig = figure(1);
+                        %                          [~] = drawCamera(camPos,makeLine,[0 10 0 10],camF,'red'); hold on;
+                        %                          [~] = drawCamera(avgP,makeLine,[0 10 0 10],avgF,'blue'); hold on;
+                        %                          axis([0 10 0 10]);
+                        %                          pause(2);
+                        %                          clf(fig);
+                        
+                    else
+                        continue;
+                    end
                 end
-                 if all(avgP(:,2) < constrF') || (avgP(2,2) > constrF(2))
-                    c(1,2) = -1;
-                 end
-                 if all(avgP(:,3) < constrF') || (avgP(2,3) > constrF(2))
-                    c(1,3) = -1;
+                
+                if (blocked > 0)
+                    disp('blocked');
+                    badPosition = 1;
                 end
-            elseif (slopeR > 10)
-                if all(avgP(:,1) < constrF') || (avgP(2,1) > constrF(2))
-                    c(2,1) = -1;
-                end
-                 if all(avgP(:,2) < constrF') || (avgP(2,2) > constrF(2))
-                    c(2,2) = -1;
-                 end
-                 if all(avgP(:,3) < constrF') || (avgP(2,3) > constrF(2))
-                    c(2,3) = -1;
-                 end
+                
             end
             
-            % testing
-%             fig = figure(1);
-%             [~] = drawCamera(avgP,makeLine,[0 10 0 10],avgF,'red'); hold on;
-%             [~] = drawCamera(constrP,makeLine,[0 10 0 10],constrF,'blue'); hold on;
-%             axis([0 10 0 10]);
-%             pause(3);
-%             clf(fig);
             
-            % change gt camera if current pos is bad, where the pos is bad
-            % if there isn't at least one negative value in each (x,y) point
-            if (sum((c(1,:) <= 0) + (c(2,:) <= 0)) >= 3)
-                badPosition = 0;
-                %disp('GOOD');
-            else
-                %disp('BAD');
+            % change gt camera if current pos is bad
+            if (badPosition)
                 newGtCam = randi([1 k]);
                 
                 while (newGtCam == dataset(curShot-1).gtCam)
@@ -108,7 +105,8 @@ for curShot = 1:n
                 end
                 
                 dataset(curShot).gtCam = newGtCam;
-            end  
+            end
+            
         else
             break;
         end
@@ -130,6 +128,56 @@ for curShot = 1:n
 end
 
 save('dataset','dataset');
+
+function [out] = isBadPosition(curPos, constrP, constrF)
+% check if the current position is within the constraint
+% if so, returns true, otherwise returns false
+% assumes curPos is a 2x4 matrix where the first three entries are the
+% position and the fourth is the focal length
+
+constraints = [constrP(:,3)'; constrF; constrP(:,1)'];
+[pt,~,~,slopeL,slopeR,~,~] = makeLines(constraints);
+
+if (slopeL > 0), slopeL = slopeL * -1; end
+if (slopeR < 0), slopeR = slopeR * -1; end
+
+c = [curPos(2,:) + (slopeL * (curPos(1,:) - pt(1))) - pt(2);   % left line
+    curPos(2,:) - (slopeR * (curPos(1,:) - pt(1))) - pt(2)];   % right line
+
+% check if near vertical lines-- only have to deal with
+% vertical instead of vertical and horizontal since the fov
+% lines will be perpendicular
+if (abs(slopeL) > 5)
+    % both x and y components need to be greater than f
+    locations = sum(curPos > constrF');
+    
+    % at least one point is in a bad location
+    if sum(locations == 2) > 0
+        c(1,:) = [1 1 1 1];
+    else
+        c(1,:) = [-1 -1 -1 -1];
+    end
+elseif (abs(slopeR) > 5)
+    % x must be smaller than fx and y must be larger than fy
+    locationsX = curPos(1,:) < constrF(1);
+    locationsY = curPos(2,:) > constrF(2);
+    
+    % at least one point is in a bad location
+    if sum((locationsX + locationsY) == 2) > 0
+        c(2,:) = [1 1 1 1];
+    else
+        c(2,:) = [-1 -1 -1 -1];
+    end
+end
+
+% pos is bad if there isn't at least one negative value in each (x,y) point
+if (sum((c(1,:) <= 0) | (c(2,:) <= 0)) >= 4)
+    out = 0;
+else
+    out = 1;
+end
+
+end
 
 function [indx] = getPrevCamShot(camera,curInd,dataset)
 % returning 0 means there isn't a previous instance of the camera
@@ -161,13 +209,13 @@ function [pos,f] = makeCameraPosition(prevInd,radius,sceneSize,dataset,fAll,sens
 if (prevInd == 0)
     % camera has not shown up in scene before
     if (cam == 1)
-        position = [1 8];
+        position = [1 6];
     elseif (cam == 2)
-        position = [5 5];
+        position = [3 4];
     elseif (cam == 3)
-        position = [9 8];
+        position = [9 6];
     else
-        position = [5 1];
+        position = [7 4];
     end
 else
     prevPos = dataset(prevInd).pos;
