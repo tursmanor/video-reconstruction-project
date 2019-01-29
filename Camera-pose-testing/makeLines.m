@@ -1,4 +1,4 @@
-function [pt,ptL,ptR,slopeL,slopeR,lLine,rLine] = makeLines(camConst)
+function [pt,slopeL,slopeR,lLine,rLine] = makeLines(camConst)
 
 pt = camConst(2,:);
 ptL = camConst(1,:);

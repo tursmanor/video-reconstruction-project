@@ -42,6 +42,7 @@ for curShot = 1:n
     
     dataset(curShot).frame = (1:frameCount)';
     badPosition = 1;
+    if curShot ~= 1, prevCam = dataset(curShot-1).gtCam; end
     
     while (badPosition)
         
@@ -54,13 +55,15 @@ for curShot = 1:n
         % change gt camera and run again
         if (curShot > 1)
             
+            curCam
+            prevCam
+            
             [constrP,constrF] = avgCamera(dataset(curShot-1).pos,dataset(curShot-1).f);
             badPosition = isBadPosition([avgP avgF'],constrP,constrF);
             
             % if current pos is good, make sure no other cameras are in its
             % fov
             if (~badPosition)
-                
                 blocked = 0;
                 
                 for cam = 1:k
@@ -94,13 +97,12 @@ for curShot = 1:n
                 end
                 
             end
-            
-            
+              
             % change gt camera if current pos is bad
             if (badPosition)
                 newGtCam = randi([1 k]);
                 
-                while (newGtCam == dataset(curShot-1).gtCam)
+                while (newGtCam == prevCam)
                     newGtCam = randi([1 k]);
                 end
                 
@@ -127,7 +129,7 @@ for curShot = 1:n
     
 end
 
-save('dataset','dataset');
+save('dataset-test-2','dataset');
 
 function [out] = isBadPosition(curPos, constrP, constrF)
 % check if the current position is within the constraint
@@ -136,7 +138,7 @@ function [out] = isBadPosition(curPos, constrP, constrF)
 % position and the fourth is the focal length
 
 constraints = [constrP(:,3)'; constrF; constrP(:,1)'];
-[pt,~,~,slopeL,slopeR,~,~] = makeLines(constraints);
+[pt,slopeL,slopeR,~,~] = makeLines(constraints);
 
 if (slopeL > 0), slopeL = slopeL * -1; end
 if (slopeR < 0), slopeR = slopeR * -1; end

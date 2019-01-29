@@ -1,22 +1,20 @@
 close all; clearvars;
 
 %% Setup
-load dataset.mat
+load dataset-test.mat
+makeLine =@(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
 
 n = size(dataset,2);    % num shots
 out = struct('cam',0, ...
     'pos',zeros(2,3), ...
-    'f',zeros(1,2), ...
-    'shots',zeros(n,1));
+    'f',zeros(1,2));
 
 % first two frames are cams 1 and 2
 out(1).cam = 1;
 [out(1).pos,out(1).f] = avgCamera(dataset(1).pos,dataset(1).f);
-out(1).shots(1) = 1;
 
 out(2).cam = 2;
 [out(2).pos,out(2).f] = avgCamera(dataset(2).pos,dataset(2).f);
-out(2).shots(2) = 1;
 
 cams = [1,2];   % active cameras in scene
 ind = [1,2];    % indices where previous cameras were found (camera 1 was
@@ -27,7 +25,6 @@ numInfeasible = zeros(2,n);
 
 %% Cluster assignments
 for i=3:n
-    i
     prevCam = out(i-1).cam;
     
     % get average position and focal length for camera
@@ -47,25 +44,35 @@ for i=3:n
             
             constrPos = out(ind(prevCam)).pos;
             constrF = out(ind(prevCam)).f;
-            constraint = [constrPos(:,3)'; ...
-                         [constrPos(1,2) constrF(2)];...
-                          constrPos(:,1)'];
-            
-            [curOpt,msg] = pathOpt2D(out(ind(j)).pos(:,2)', ...
+            constraint = [constrPos(:,3)'; constrF; constrPos(:,1)'];
+                      
+            [curOpt,msg,posOut] = pathOpt2D(out(ind(j)).pos(:,2)', ...
                                      avgP(:,2)', ...
                                      constraint);
+                                                                                  
+            % testing
+%             figure;
+%             [~] = drawCamera(out(ind(j)).pos,makeLine,[0 10 0 10],out(ind(j)).f,'red'); hold on;
+%             [~] = drawCamera(constrPos,makeLine,[0 10 0 10],constrF,'blue'); hold on;
+%             plot(posOut(:,1),posOut(:,2)); hold on;
+%             axis([0 10 0 10]);
+            
         end
+  
         
-        if ((curOpt(1) < opt(1)) && ...
-           (sum(msg.message(1:32) == 'Converged to an infeasible point'))/32 ~= 1)
+        if (curOpt(1) < opt(1)) & (msg.message(1:5) == 'Local')
             opt = curOpt;
             bestCam = j;
         end
     
         % for testing
-        if ((sum(msg.message(1:32) == 'Converged to an infeasible point'))/32 ~= 1)
+        if (msg.message(1:32) == 'Converged to an infeasible point')
             numInfeasible(1,i) = numInfeasible(i) + 1;
+            %continue;
         end
+        
+        disp('current best time');
+        opt(1)
     
     end
     
@@ -73,7 +80,6 @@ for i=3:n
     % assign shot to an existing camera or a new camera
     thresh = 5;
     if (opt(1) < thresh)
-        
         out(i).cam = bestCam;
         ind(bestCam) = i;
     else
@@ -84,7 +90,6 @@ for i=3:n
     
     out(i).pos = avgP;
     out(i).f = avgF;
-    out(i).shots(i) = 1;
     
 end
 

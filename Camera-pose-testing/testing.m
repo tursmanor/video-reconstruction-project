@@ -8,68 +8,72 @@ camPos = [3 3.5 4; 5.5 5 4.5];
 camF = [4.5 6.5];
 constrP = [4 5 6; 4 4 4];
 constrF = [5 5];
-
-figure;
-[~] = drawCamera(camPos,makeLine,[0 10 0 10],camF,'red'); hold on;
-[~] = drawCamera(constrP,makeLine,[0 10 0 10],constrF,'blue'); hold on;
-axis([0 10 0 10]);
+constraint = [constrP(:,3)'; constrF; constrP(:,1)'];
 
 if (isBadPosition([camPos camF'], constrP, constrF) == 1)
     disp('pass');
 else
     disp('fail');
 end
+
+[curOpt,msg,posOut] = pathOpt2D([1 9],[10 9],constraint);
+
+figure;
+%[~] = drawCamera(camPos,makeLine,[0 10 0 10],camF,'red'); hold on;
+[~] = drawCamera(constrP,makeLine,[0 10 0 10],constrF,'blue'); hold on;
+axis([0 10 0 10]);
+plot(posOut(:,1),posOut(:,2));
 
 %% Problem 2: just focal length inside constr, no vertical lines
-camPos = [4 3 2; 1 1 1];
-camF = [3 3.5];
-constrP = [6 6 6; 4 5 6];
-constrF = [5 5];
-
-figure;
-[~] = drawCamera(camPos,makeLine,[0 10 0 10],camF,'red'); hold on;
-[~] = drawCamera(constrP,makeLine,[0 10 0 10],constrF,'blue'); hold on;
-axis([0 10 0 10]);
-
-if (isBadPosition([camPos camF'], constrP, constrF) == 1)
-    disp('pass');
-else
-    disp('fail');
-end
+% camPos = [4 3 2; 1 1 1];
+% camF = [3 3.5];
+% constrP = [6 6 6; 4 5 6];
+% constrF = [5 5];
+% 
+% figure;
+% [~] = drawCamera(camPos,makeLine,[0 10 0 10],camF,'red'); hold on;
+% [~] = drawCamera(constrP,makeLine,[0 10 0 10],constrF,'blue'); hold on;
+% axis([0 10 0 10]);
+% 
+% if (isBadPosition([camPos camF'], constrP, constrF) == 1)
+%     disp('pass');
+% else
+%     disp('fail');
+% end
 
 %% Problem 3: just focal length inside, vertical lines
-camPos = [4 3 2; 4 4 4];
-camF = [3 6];
-constrP = [5 5.5 6; 4 4.5 5];
-constrF = [5 5];
-
-figure;
-[~] = drawCamera(camPos,makeLine,[0 10 0 10],camF,'red'); hold on;
-[~] = drawCamera(constrP,makeLine,[0 10 0 10],constrF,'blue'); hold on;
-axis([0 10 0 10]);
-
-if (isBadPosition([camPos camF'], constrP, constrF) == 1)
-    disp('pass');
-else
-    disp('fail');
-end
+% camPos = [4 3 2; 4 4 4];
+% camF = [3 6];
+% constrP = [5 5.5 6; 4 4.5 5];
+% constrF = [5 5];
+% 
+% figure;
+% [~] = drawCamera(camPos,makeLine,[0 10 0 10],camF,'red'); hold on;
+% [~] = drawCamera(constrP,makeLine,[0 10 0 10],constrF,'blue'); hold on;
+% axis([0 10 0 10]);
+% 
+% if (isBadPosition([camPos camF'], constrP, constrF) == 1)
+%     disp('pass');
+% else
+%     disp('fail');
+% end
 
 %% Problem 4: a pass case
-camPos = [4 3 2; 1 1 1];
-camF = [3 2];
-constrP = [6 6 6; 4 5 6];
-constrF = [5 5];
-
-figure;
-[~] = drawCamera(camPos,makeLine,[0 10 0 10],camF,'red'); hold on;
-[~] = drawCamera(constrP,makeLine,[0 10 0 10],constrF,'blue'); hold on;
-axis([0 10 0 10]);
-
-if (isBadPosition([camPos camF'], constrP, constrF) == 0)
-    disp('pass');
-else
-    disp('fail');
-end
+% camPos = [4 3 2; 1 1 1];
+% camF = [3 2];
+% constrP = [6 6 6; 4 5 6];
+% constrF = [5 5];
+% 
+% figure;
+% [~] = drawCamera(camPos,makeLine,[0 10 0 10],camF,'red'); hold on;
+% [~] = drawCamera(constrP,makeLine,[0 10 0 10],constrF,'blue'); hold on;
+% axis([0 10 0 10]);
+% 
+% if (isBadPosition([camPos camF'], constrP, constrF) == 0)
+%     disp('pass');
+% else
+%     disp('fail');
+% end
 
 %% Functions to test
 function [out] = isBadPosition(curPos, constrP, constrF)
@@ -79,7 +83,7 @@ function [out] = isBadPosition(curPos, constrP, constrF)
 % position and the fourth is the focal length
 
 constraints = [constrP(:,3)'; constrF; constrP(:,1)'];
-[pt,~,~,slopeL,slopeR,~,~] = makeLines(constraints);
+[pt,slopeL,slopeR,~,~] = makeLines(constraints);
 
 if (slopeL > 0), slopeL = slopeL * -1; end
 if (slopeR < 0), slopeR = slopeR * -1; end
