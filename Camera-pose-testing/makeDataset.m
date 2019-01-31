@@ -1,5 +1,4 @@
 close all; clearvars;
-
 %% Dataset creation
 % n shots, assume all have 30 frames
 % each frame has a camera position (two 2d points) and a focal length (one
@@ -47,6 +46,12 @@ for curShot = 1:n
     while (badPosition)
         
         curCam = dataset(curShot).gtCam;
+        
+        while (curCam == prevCam)
+            curCam = randi([1 k]);
+            dataset(curShot).gtCam = curCam;
+        end
+        
         indx = getPrevCamShot(curCam,curShot,dataset);
         [pos,f] = makeCameraPosition(indx,radius,sceneSize,dataset,fAll,sensorWidth,curCam,frameCount);
         [avgP,avgF] = avgCamera(pos,f);
@@ -54,10 +59,7 @@ for curShot = 1:n
         % check that we're not in the fov of the active camera-- if we are,
         % change gt camera and run again
         if (curShot > 1)
-            
-            curCam
-            prevCam
-            
+
             [constrP,constrF] = avgCamera(dataset(curShot-1).pos,dataset(curShot-1).f);
             badPosition = isBadPosition([avgP avgF'],constrP,constrF);
             
@@ -77,15 +79,6 @@ for curShot = 1:n
                     if (indx ~= 0)
                         [camPos,camF] = avgCamera(dataset(indx).pos,dataset(indx).f);
                         blocked = blocked + isBadPosition([camPos camF'],avgP,avgF);
-                        
-                        % testing
-                        %                          fig = figure(1);
-                        %                          [~] = drawCamera(camPos,makeLine,[0 10 0 10],camF,'red'); hold on;
-                        %                          [~] = drawCamera(avgP,makeLine,[0 10 0 10],avgF,'blue'); hold on;
-                        %                          axis([0 10 0 10]);
-                        %                          pause(2);
-                        %                          clf(fig);
-                        
                     else
                         continue;
                     end
@@ -94,8 +87,7 @@ for curShot = 1:n
                 if (blocked > 0)
                     disp('blocked');
                     badPosition = 1;
-                end
-                
+                end  
             end
               
             % change gt camera if current pos is bad
@@ -107,6 +99,8 @@ for curShot = 1:n
                 end
                 
                 dataset(curShot).gtCam = newGtCam;
+                dataset(curShot).gtCam
+                dataset(curShot-1).gtCam
             end
             
         else
@@ -117,19 +111,32 @@ for curShot = 1:n
     
     dataset(curShot).pos = pos;
     dataset(curShot).f = f;
-    
-    %testing
-    %   if (indx ~= 0)
-    %       figure;
-    %       scatter(dataset(indx).pos(1,2),dataset(indx).pos(2,2)); hold on;
-    %       viscircles([dataset(indx).pos(1,2),dataset(indx).pos(2,2)],radius); hold on;
-    %       scatter(dataset(curShot).pos(1,2),dataset(curShot).pos(2,2));
-    %       pause(1);
-    %   end
-    
 end
 
-save('dataset-test-2','dataset');
+% refactor camera numbering so that it aligns with clustering expectations
+assignments = zeros(2,k);
+assignments(1,1) = dataset(1).gtCam;
+assignments(2,1) = 1;
+assignments(1,2) = dataset(2).gtCam;
+assignments(2,2) = 2;
+newCam = 3;
+for curShot = 3:n
+    if dataset(curShot).gtCam ~= assignments(1,:)
+        assignments(1,newCam) = dataset(curShot).gtCam;
+        assignments(2,newCam) = newCam;
+        newCam = newCam + 1;
+    end  
+end
+
+% assign to dataset
+for curShot = 1:n
+   curGT = dataset(curShot).gtCam;
+   indx = find(assignments(1,:) == curGT);
+   newGT = assignments(2,indx); 
+   dataset(curShot).gtCam = newGT;
+end
+
+save('dataset','dataset');
 
 function [out] = isBadPosition(curPos, constrP, constrF)
 % check if the current position is within the constraint
@@ -140,36 +147,18 @@ function [out] = isBadPosition(curPos, constrP, constrF)
 constraints = [constrP(:,3)'; constrF; constrP(:,1)'];
 [pt,slopeL,slopeR,~,~] = makeLines(constraints);
 
-if (slopeL > 0), slopeL = slopeL * -1; end
-if (slopeR < 0), slopeR = slopeR * -1; end
+% cap slope to avoid inf with vertical lines
+if (abs(slopeL) > 10), slopeL = -100; end
+if (abs(slopeR) > 10), slopeR = 100; end
 
-c = [curPos(2,:) + (slopeL * (curPos(1,:) - pt(1))) - pt(2);   % left line
-    curPos(2,:) - (slopeR * (curPos(1,:) - pt(1))) - pt(2)];   % right line
+c = [curPos(2,:) - (slopeL * (curPos(1,:) - pt(1))) - pt(2);   % left line
+     curPos(2,:) - (slopeR * (curPos(1,:) - pt(1))) - pt(2)];   % right line
 
-% check if near vertical lines-- only have to deal with
-% vertical instead of vertical and horizontal since the fov
-% lines will be perpendicular
-if (abs(slopeL) > 5)
-    % both x and y components need to be greater than f
-    locations = sum(curPos > constrF');
-    
-    % at least one point is in a bad location
-    if sum(locations == 2) > 0
-        c(1,:) = [1 1 1 1];
-    else
-        c(1,:) = [-1 -1 -1 -1];
-    end
-elseif (abs(slopeR) > 5)
-    % x must be smaller than fx and y must be larger than fy
-    locationsX = curPos(1,:) < constrF(1);
-    locationsY = curPos(2,:) > constrF(2);
-    
-    % at least one point is in a bad location
-    if sum((locationsX + locationsY) == 2) > 0
-        c(2,:) = [1 1 1 1];
-    else
-        c(2,:) = [-1 -1 -1 -1];
-    end
+if (slopeL > 0)
+    c(1,:) = c(1,:) * -1; 
+end
+if (slopeR < 0)
+    c(2,:) = c(2,:) * -1; 
 end
 
 % pos is bad if there isn't at least one negative value in each (x,y) point
@@ -213,11 +202,11 @@ if (prevInd == 0)
     if (cam == 1)
         position = [1 6];
     elseif (cam == 2)
-        position = [3 4];
+        position = [4 4];
     elseif (cam == 3)
-        position = [9 6];
+        position = [6 4];
     else
-        position = [7 4];
+        position = [9 6];
     end
 else
     prevPos = dataset(prevInd).pos;
@@ -236,10 +225,16 @@ camPos = [(position(1) - sensorWidth/2) position(1) (position(1) + sensorWidth/2
     position(2) position(2) position(2)];
 f = [position(1) position(2) + fAll(cam)];
 
-% randomly rotate before adding noise
-[camPosRot, fRot] = moveCamera(camPos,f,[0;0]);
-camMatrix = repmat(camPosRot,frameCount,1);
-fMatrix = repmat(fRot',frameCount,1);
+% randomly rotate before adding noise, if the camera has appeared before
+% only
+if (prevInd ~= 0)
+    [camPosRot, fRot] = moveCamera(camPos,f,[0;0]);
+    camMatrix = repmat(camPosRot,frameCount,1);
+    fMatrix = repmat(fRot',frameCount,1);
+else
+    camMatrix = repmat(camPos,frameCount,1);
+    fMatrix = repmat(f,frameCount,1);
+end
 
 % generate noise
 range = [-.5 .5];

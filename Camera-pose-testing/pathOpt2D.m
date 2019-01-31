@@ -1,4 +1,4 @@
-function [outputs,out,positions] = pathOpt2D(initPos,endPos,camConst)
+function [optimalOut,out,positions] = pathOpt2D(initPos,endPos,camConst)
 % examples of use:
 % camConst = [5 4; 6 2; 7 4]; %left pt, center pt, right pt
 % optimal = pathOpt2D(line(:,2)', rotLine(:,2)', 0);

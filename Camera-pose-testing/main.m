@@ -1,7 +1,7 @@
 close all; clearvars;
 
 %% Setup
-load dataset-test.mat
+load dataset.mat
 makeLine =@(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
 
 n = size(dataset,2);    % num shots
@@ -51,11 +51,11 @@ for i=3:n
                                      constraint);
                                                                                   
             % testing
-%             figure;
-%             [~] = drawCamera(out(ind(j)).pos,makeLine,[0 10 0 10],out(ind(j)).f,'red'); hold on;
-%             [~] = drawCamera(constrPos,makeLine,[0 10 0 10],constrF,'blue'); hold on;
-%             plot(posOut(:,1),posOut(:,2)); hold on;
-%             axis([0 10 0 10]);
+            figure;
+            [~] = drawCamera(out(ind(j)).pos,makeLine,[0 10 0 10],out(ind(j)).f,'red'); hold on;
+            [~] = drawCamera(constrPos,makeLine,[0 10 0 10],constrF,'blue'); hold on;
+            plot(posOut(:,1),posOut(:,2)); hold on;
+            axis([0 10 0 10]);
             
         end
   
@@ -78,7 +78,7 @@ for i=3:n
     
     % check versus some time threshold to determine whether or not to
     % assign shot to an existing camera or a new camera
-    thresh = 5;
+    thresh = 4;
     if (opt(1) < thresh)
         out(i).cam = bestCam;
         ind(bestCam) = i;
@@ -93,4 +93,15 @@ for i=3:n
     
 end
 
+save('clustering','out');
 
+%% Quantify results
+algoOut = vertcat(out.cam);
+gtOut = vertcat(dataset.gtCam);
+
+sum(algoOut == gtOut) / n
+if (algoOut == gtOut)
+    disp('Pass');
+else 
+    disp('Fail');
+end
