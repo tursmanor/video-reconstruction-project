@@ -3,11 +3,11 @@
 % by frame
 
 close all; clearvars;
-load dataset.mat
-
+load experiment1.mat
+dataset = datasets(46).GT;
 sceneSize = [-10 15 -10 15];
 makeLine = @(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
-filename = 'Results/dataset-visualization.gif';
+filename = 'Results/exp1-gt46.gif';
 
 fig = figure(1);
 axis([0 10 0 10]); hold on;
@@ -53,13 +53,16 @@ for i = 1:size(dataset,2)
     
     prevCam = curCam;
     
+    % get time of shot
+    time = dataset(i).frame / 30;
+    
     % save as a gif
     im = frame2im(getframe(fig));
     [A,map] = rgb2ind(im,256);
     if (i == 1)
-        imwrite(A,map,filename,'gif','LoopCount',Inf,'DelayTime',2);
+        imwrite(A,map,filename,'gif','LoopCount',Inf,'DelayTime',time);
     else
-        imwrite(A,map,filename,'gif','WriteMode','append','DelayTime',2);
+        imwrite(A,map,filename,'gif','WriteMode','append','DelayTime',time);
     end
     
 end

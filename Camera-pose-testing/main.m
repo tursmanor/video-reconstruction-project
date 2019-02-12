@@ -1,7 +1,6 @@
-close all; clearvars;
-
+function out = main(dataset)
 %% Setup
-load dataset.mat
+%load dataset-radius-test.mat
 makeLine =@(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
 
 n = size(dataset,2);    % num shots
@@ -45,21 +44,20 @@ for i=3:n
             constrPos = out(ind(prevCam)).pos;
             constrF = out(ind(prevCam)).f;
             constraint = [constrPos(:,3)'; constrF; constrPos(:,1)'];
-                      
+                          
             [curOpt,msg,posOut] = pathOpt2D(out(ind(j)).pos(:,2)', ...
                                      avgP(:,2)', ...
                                      constraint);
                                                                                   
             % testing
-            figure;
-            [~] = drawCamera(out(ind(j)).pos,makeLine,[0 10 0 10],out(ind(j)).f,'red'); hold on;
-            [~] = drawCamera(constrPos,makeLine,[0 10 0 10],constrF,'blue'); hold on;
-            plot(posOut(:,1),posOut(:,2)); hold on;
-            axis([0 10 0 10]);
+%             figure;
+%             [~] = drawCamera(out(ind(j)).pos,makeLine,[0 10 0 10],out(ind(j)).f,'red'); hold on;
+%             [~] = drawCamera(constrPos,makeLine,[0 10 0 10],constrF,'blue'); hold on;
+%             plot(posOut(:,1),posOut(:,2)); hold on;
+%             axis([0 10 0 10]);
             
         end
   
-        
         if (curOpt(1) < opt(1)) & (msg.message(1:5) == 'Local')
             opt = curOpt;
             bestCam = j;
@@ -68,7 +66,6 @@ for i=3:n
         % for testing
         if (msg.message(1:32) == 'Converged to an infeasible point')
             numInfeasible(1,i) = numInfeasible(i) + 1;
-            %continue;
         end
         
         disp('current best time');
@@ -76,10 +73,14 @@ for i=3:n
     
     end
     
+%     if (norm(out(ind(bestCam)).pos(:,2)' - avgP(:,2)') > 0.0937)
+%         disp('BAD');
+%     end
+    
     % check versus some time threshold to determine whether or not to
     % assign shot to an existing camera or a new camera
-    thresh = 4;
-    if (opt(1) < thresh)
+    thresh = (dataset(i-1).frame / 30)% * 1.5;
+    if (opt(1) <= thresh)
         out(i).cam = bestCam;
         ind(bestCam) = i;
     else
@@ -93,15 +94,11 @@ for i=3:n
     
 end
 
-save('clustering','out');
+%save('clustering-radius-test','out');
 
 %% Quantify results
 algoOut = vertcat(out.cam);
-gtOut = vertcat(dataset.gtCam);
+gtOut = vertcat(dataset.gtCam); 
+accuracy = sum(algoOut == gtOut) / n
 
-sum(algoOut == gtOut) / n
-if (algoOut == gtOut)
-    disp('Pass');
-else 
-    disp('Fail');
 end

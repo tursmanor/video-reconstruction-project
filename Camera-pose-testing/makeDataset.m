@@ -1,6 +1,6 @@
-close all; clearvars;
+function dataset = makeDataset(frameCount,pNoise)
 %% Dataset creation
-% n shots, assume all have 30 frames
+% n shots, between 30 and 150 frames per second (1-5 seconds)
 % each frame has a camera position (two 2d points) and a focal length (one
 % point)
 % k cameras
@@ -9,18 +9,18 @@ close all; clearvars;
 % cameras must all be pointing at the set, aka the top line of the scene
 % hard code initial positions of all 4 cameras to spread them out
 n = 10;
-frameCount = 30;
+vMax = 1;
+aMax = 1;
 k = 4;
-sceneSize = [2 9; 2 9]; % middle point can't be at 1 or 10
+sceneSize = [0 10; 0 10];
 sensorWidth = 2;
 fAll = [1 1 1 1]; % focal lengths of all four cameras
 camPositions = zeros(k*2,3); % keep track of where cameras are in space
-radius = 2;
 makeLine =@(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
 
 % dataset structure
-dataset = struct('frame',zeros(frameCount,1),'pos',zeros(frameCount * 2,3), ...
-    'f',zeros(frameCount,2),'gtCam',0);
+dataset = struct('frame',0,'pos',zeros(frameCount(1) * 2,3), ...
+    'f',zeros(frameCount(1),2),'gtCam',0);
 
 % generate random gt camera assignment first
 prevCam = 0;
@@ -39,9 +39,18 @@ end
 % calculate possible positions based on radius of allowed movement
 for curShot = 1:n
     
-    dataset(curShot).frame = (1:frameCount)';
+    % determine number of frames in this shot
+    frameNum = randi(frameCount);
+    dataset(curShot).frame = frameNum;
     badPosition = 1;
     if curShot ~= 1, prevCam = dataset(curShot-1).gtCam; end
+    
+    % set radius based on previous shot length
+    if (curShot > 1)
+       radius = calcRadius(dataset(curShot-1).frame / 30);
+    else
+        radius = 0;
+    end
     
     while (badPosition)
         
@@ -53,7 +62,8 @@ for curShot = 1:n
         end
         
         indx = getPrevCamShot(curCam,curShot,dataset);
-        [pos,f] = makeCameraPosition(indx,radius,sceneSize,dataset,fAll,sensorWidth,curCam,frameCount);
+        [pos,f] = makeCameraPosition(indx,radius,sceneSize,dataset,fAll,sensorWidth,curCam,frameNum);
+        [pos,f] = addNoise(pos,f);
         [avgP,avgF] = avgCamera(pos,f);
         
         % check that we're not in the fov of the active camera-- if we are,
@@ -99,8 +109,6 @@ for curShot = 1:n
                 end
                 
                 dataset(curShot).gtCam = newGtCam;
-                dataset(curShot).gtCam
-                dataset(curShot-1).gtCam
             end
             
         else
@@ -108,6 +116,16 @@ for curShot = 1:n
         end
         
     end
+    
+    % testing
+    tmp = getPrevCamShot(dataset(curShot).gtCam,curShot,dataset);
+    if (tmp ~= 0)
+        [tmpPos,~] = avgCamera(dataset(tmp).pos,dataset(tmp).f);
+        if (norm(tmpPos(1:2,2) - pos(1:2,2))> calcRadius(dataset(curShot-1).frame/30))
+            disp('BAD');
+        end
+    end
+    
     
     dataset(curShot).pos = pos;
     dataset(curShot).f = f;
@@ -136,7 +154,15 @@ for curShot = 1:n
    dataset(curShot).gtCam = newGT;
 end
 
-save('dataset','dataset');
+%save('dataset-radius-test','dataset');
+
+function [radius] = calcRadius(time)
+    
+x =[-0.0162    0.1837   -0.0038   -0.07];
+radius = x(1)*time^3 + x(2)*time^2 + x(3)*time + x(4);
+if radius < 0, radius = 0; end
+
+end
 
 function [out] = isBadPosition(curPos, constrP, constrF)
 % check if the current position is within the constraint
@@ -209,7 +235,7 @@ if (prevInd == 0)
         position = [9 6];
     end
 else
-    prevPos = dataset(prevInd).pos;
+    [prevPos,~] = avgCamera(dataset(prevInd).pos,dataset(prevInd).f);
     [x,y] = randPtInCircle(prevPos(1,2),prevPos(2,2),radius);
     
     % bounds checking
@@ -225,6 +251,13 @@ camPos = [(position(1) - sensorWidth/2) position(1) (position(1) + sensorWidth/2
     position(2) position(2) position(2)];
 f = [position(1) position(2) + fAll(cam)];
 
+
+if (prevInd ~= 0)
+if (norm([prevPos(1,2) prevPos(2,2)] - [position(1) position(2)])> calcRadius(dataset(curShot-1).frame/30))
+    disp('BAD');
+end
+end
+
 % randomly rotate before adding noise, if the camera has appeared before
 % only
 if (prevInd ~= 0)
@@ -236,16 +269,23 @@ else
     fMatrix = repmat(f,frameCount,1);
 end
 
-% generate noise
-range = [-.5 .5];
-rangeF = [-.2 .2];
-noise = range(1) + (range(2) - range(1)) * rand(size(camMatrix,1),1);
-noise = repmat(noise,1,3);
-noiseF = rangeF(1) + (rangeF(2) - rangeF(1)) * rand(size(fMatrix,1),1);
-noiseF = repmat(noiseF,1,2);
+pos = camMatrix;
+f = fMatrix;
 
-% add noise
-pos = camMatrix + noise;
-f = fMatrix + noiseF;
+end
+
+function [pos,f] = addNoise(pos,f,pNoise)
+        
+    % 0.01 works
+    range = [-pNoise pNoise];
+    rangeF = [-.2 .2];
+    noise = range(1) + (range(2) - range(1)) * rand(size(pos));
+    noiseF = rangeF(1) + (rangeF(2) - rangeF(1)) * rand(size(f));
+    
+    % add noise
+    pos = pos + noise;
+    f = f + noiseF;
+    
+end
 
 end

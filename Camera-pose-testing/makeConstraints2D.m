@@ -7,11 +7,11 @@ minPosy = params.minPosy;
 maxVelocity = params.maxVelocity;
 maxAcceleration = params.maxAcceleration;
 constraints = params.constraints;
+delta = params.delta;
 
 constraints2D = @a;
 
     function [c,ceq] = a(x)
-        delta = 0;
         
         % Calculate the timestep
         sim_time = x(1);

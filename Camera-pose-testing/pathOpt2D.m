@@ -6,7 +6,7 @@ function [optimalOut,out,positions] = pathOpt2D(initPos,endPos,camConst)
 
 %% 2d version
 % Setup
-gridN = 20;
+gridN = 5;
 maxPosx = endPos(1);
 minPosx = initPos(1);
 maxPosy = endPos(2);
@@ -14,11 +14,12 @@ minPosy = initPos(2);
 maxVelocity = 1;
 maxAcceleration = 1;
 constraints = camConst;
+delta = 0;
 
 params = struct('gridN',gridN,'maxPosx',maxPosx,'minPosx',minPosx, ...
                 'maxPosy',maxPosy,'minPosy',minPosy,'maxVelocity', ...
                 maxVelocity,'maxAcceleration',maxAcceleration, ...
-                'constraints',constraints);
+                'constraints',constraints,'delta',delta);
 
 % Minimize the simulation time
 time_min = @(x) x(1);
@@ -45,7 +46,7 @@ options = optimoptions(@fmincon,'StepTolerance',1e-2,'OptimalityTolerance',1e-2,
 %% Brute force global optimization
 % 70 converges in 2min for squares
 % 20 iters @ 20 gridN is between 25-47 seconds on avg in parfor
-iterations = 20;
+iterations = 40;
 outputs = zeros(gridN * 6 + 1,iterations);
 
 tic
