@@ -68,8 +68,8 @@ for i=3:n
             numInfeasible(1,i) = numInfeasible(i) + 1;
         end
         
-        disp('current best time');
-        opt(1)
+%         disp('current best time');
+%         opt(1)
     
     end
     
@@ -79,7 +79,7 @@ for i=3:n
     
     % check versus some time threshold to determine whether or not to
     % assign shot to an existing camera or a new camera
-    thresh = (dataset(i-1).frame / 30)% * 1.5;
+    thresh = (dataset(i-1).frame / 30);% * 1.5;
     if (opt(1) <= thresh)
         out(i).cam = bestCam;
         ind(bestCam) = i;

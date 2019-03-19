@@ -3,11 +3,11 @@
 % by frame
 
 close all; clearvars;
-load experiment1.mat
-dataset = datasets(46).GT;
+load 'Results/dataset-test2.mat'
+%dataset = datasets(46).GT;
 sceneSize = [-10 15 -10 15];
 makeLine = @(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
-filename = 'Results/exp1-gt46.gif';
+filename = 'Results/dataset-test2.gif';
 
 fig = figure(1);
 axis([0 10 0 10]); hold on;

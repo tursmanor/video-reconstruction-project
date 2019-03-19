@@ -13,7 +13,7 @@ for i=1:numP
     points2DReprojected = zeros(numPts,3);
     for j=1:numPts
         cur2DPt = curP * [points3D(j,:)'; 1];
-        points2DReprojected(j,:) = cur2DPt ./ cur2DPt(3); % norm so third entry is one
+        points2DReprojected(j,:) = cur2DPt ./ cur2DPt(end); % norm so third entry is one
     end
     
     points2DReprojected = points2DReprojected(:,1:2);

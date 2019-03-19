@@ -63,7 +63,6 @@ for curShot = 1:n
         
         indx = getPrevCamShot(curCam,curShot,dataset);
         [pos,f] = makeCameraPosition(indx,radius,sceneSize,dataset,fAll,sensorWidth,curCam,frameNum);
-        [pos,f] = addNoise(pos,f);
         [avgP,avgF] = avgCamera(pos,f);
         
         % check that we're not in the fov of the active camera-- if we are,
@@ -152,6 +151,16 @@ for curShot = 1:n
    indx = find(assignments(1,:) == curGT);
    newGT = assignments(2,indx); 
    dataset(curShot).gtCam = newGT;
+end
+
+for curShot = 1:n
+    curP = dataset(curShot).pos;
+    curF = dataset(curShot).f;
+    
+    [pos,f] = addNoise(curP,curF,pNoise);
+    
+    dataset(curShot).pos = pos;
+    dataset(curShot).f = f;
 end
 
 %save('dataset-radius-test','dataset');

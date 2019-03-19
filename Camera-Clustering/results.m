@@ -7,17 +7,17 @@ close all; clearvars;
 % 100 trials per experiment
 % Metrics: cam assignment, num cameras, total distance
 
-n = 1;
-datasets = struct('GT',0,'Algo',0);
-
-% data collection
-for i=1:n
-    datasets(i).GT = makeDataset([15 15],4);
-    datasets(i).Algo = main(datasets(i).GT); 
-    i
-end
-
-save('round2-experiment1','datasets');
+% n = 1;
+% datasets = struct('GT',0,'Algo',0);
+% 
+% % data collection
+% for i=1:n
+%     datasets(i).GT = makeDataset([30 150],0.01);
+%     datasets(i).Algo = main(datasets(i).GT); 
+%     i
+% end
+% 
+% save('round2-experiment1','datasets');
 
 % analysis
 % load experiment1.mat
@@ -59,24 +59,24 @@ save('round2-experiment1','datasets');
 % 100 trials per experiment
 % Metrics: cam assignment, num cameras, total distance
 
-%n = 20;
+% n = 20;
 % datasets = struct('GT',0,'Algo',0);
-%frameInc = 15:15:150;
-% frameInc = 165:15:300;
-
-% data collection
+% frameInc = 15:15:150;
+% %frameInc = 165:15:300;
+% 
+% %data collection
 % for j=frameInc
 %     for i=1:n
-%         datasets(i).GT = makeDataset([j j],4);
+%         datasets(i).GT = makeDataset([j j],0.01);
 %         datasets(i).Algo = main(datasets(i).GT);
 %         i
 %     end
-%     save(['experiment2-' num2str(j)],'datasets');
+%     save(['round2-experiment2-' num2str(j)],'datasets');
 %     j
 % end
 
 % analysis
-% load experiment2-300.mat
+% load round2-experiment2-300.mat
 % 
 % n = 20;
 % acc = 0;
@@ -104,10 +104,13 @@ save('round2-experiment1','datasets');
 % acc / n
 % sameCamNum / n
 % diff / n
-% histogram(hist,50); hold on;
-% ylabel('count');
-% xlabel('GT Distance - Algo Distance');
-
+% 
+% 
+% xdata = 15:15:300;
+% accuracies = [1,1,1,1,1,0.9950,0.97,0.945,0.84,0.7250,0.82,0.76,0.695,0.51,0.6250,0.54,0.525,0.585,0.46,0.535];
+% camNum =     [0,0,0,0,0,0.0125,0,0.0125,0.05,0.0875,0.05,0.0625,0.0875,0.2375,0.1417,0.2,0.225,0.15,0.2625,0.3125];
+% distErr =    [0,0,0,0,0,0.0195,0.0244,0.0329,0.1826,0.2102,0.1693,0.3139,0.3413,0.6121,0.3763,0.6785,0.6939,0.7322,1.2437,1.9978];
+%  
 
 %% EXPERIMENT 3
 % 10 shots, 4 cameras
@@ -137,54 +140,86 @@ save('round2-experiment1','datasets');
 % keep f noise fixed, r/4 as base
 % increments: r/4, r/3.5, r/3, r/2.5, r/2, r/1.5, r
 % 
-% n = 20;
+% n = 10;
 % datasets = struct('GT',0,'Algo',0);
 % %denominators = 4:-.5:1;
-% denominators = 0.0156;
+% noise = 0.2:0.2:1;
 % 
-% for j=denominators
+% for j=noise
 %     for i=1:n
 %         datasets(i).GT = makeDataset([30 150],j);
 %         datasets(i).Algo = main(datasets(i).GT);
 %         i
 %     end
-%     save(['experiment4-' num2str(j)],'datasets');
+%     save(['round3-experiment4-' num2str(j)],'datasets');
 %     j
 % end
 
 % analysis
-% load experiment4-0-0625.mat
-% 
-% n = 20;
-% acc = 0;
-% diff = 0;
-% sameCamNum = 0;
-% hist = [];
-% for i=1:n
-%     
-%     algoOut = vertcat(datasets(i).Algo.cam);
-%     gtOut = vertcat(datasets(i).GT.gtCam); 
-%     accuracy = sum(algoOut == gtOut) / 10;
-%     acc = acc + accuracy;
-%     
-%     k1 = max(vertcat(datasets(i).GT.gtCam));
-%     k2 = max(vertcat(datasets(i).Algo.cam));    
-%     sameCamNum = sameCamNum + abs((k2 - k1) / k1);
-%     
-%     d = distanceComparison(datasets(i).GT, datasets(i).Algo);
-%     if (d(1) ~= 0)
-%         diff = diff + abs(((d(2)-d(1)) / d(1)));
-%     end
-%     hist = [hist d(1)-d(2)];
-% end
-% 
-% acc / n
-% diff / n
-% sameCamNum / n
+load round3-experiment4-1.mat
+
+n = 10;
+acc = 0;
+diff = 0;
+sameCamNum = 0;
+hist = [];
+for i=1:n
+    
+    algoOut = vertcat(datasets(i).Algo.cam);
+    gtOut = vertcat(datasets(i).GT.gtCam); 
+    accuracy = sum(algoOut == gtOut) / 10;
+    acc = acc + accuracy;
+    
+    k1 = max(vertcat(datasets(i).GT.gtCam));
+    k2 = max(vertcat(datasets(i).Algo.cam));    
+    sameCamNum = sameCamNum + abs((k2 - k1) / k1);
+    
+    d = distanceComparison(datasets(i).GT, datasets(i).Algo);
+    if (d(1) ~= 0)
+        diff = diff + abs(((d(2)-d(1)) / d(1)));
+    end
+    hist = [hist d(1)-d(2)];
+end
+
+acc / n
+diff / n
+sameCamNum / n
 % histogram(hist,50); hold on;
 % ylabel('count');
 % xlabel('GT Distance - Algo Distance');
 % title('Experiment One Results');
+
+%% Plotting for 4, try 2
+
+xdata = [0.01,0.2,0.4,0.6,0.8,1];
+acc = [0.98,0.97,0.93,0.95,0.84,0.83];
+distErr = [0.003,0.0551,0.0949,0.11,0.1124,0.182];
+camNum = [0,0,0.0750,0.1,0.25,0.25];
+
+
+% xdata = [0.01,0.2,0.4,0.6,0.8,1];
+% acc = [0.98,0.92,0.87,0.79,0.88,0.82];
+% distErr = [0.0030,0.1215,0.2088,0.2972,0.1161,0.3643];
+% camNum = [0,0,0.0750,0.2750,0.10,0.1750];
+% 
+figure;
+plot(xdata,acc); hold on;
+xlabel('Noise Added to Position');
+ylabel('Clustering Accuracy');
+title('Clustering Accuracy v Noise');
+
+figure;
+plot(xdata,camNum); hold on;
+xlabel('Noise Added to Position');
+ylabel('Camera Number Percent Error');
+title('Camera Number Percent Error v Noise');
+
+figure;
+plot(xdata,distErr); hold on;
+xlabel('Noise Added to Position');
+ylabel('Distance Percent Error');
+title('Distance Percent Error v Noise');
+
 
 %% Plotting stuff for experiment 4
 % xdata = [4,3.5,3,2.5,2,1.5,1,0.25,0.0625];

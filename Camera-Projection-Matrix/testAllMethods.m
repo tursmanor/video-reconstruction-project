@@ -9,12 +9,12 @@
 close all; clearvars;
 
 %% Load data
-dataFolder = 'Data/Orig-Cam/';
-points2Dold = loadUnityData([dataFolder 'camera1-frame498-screenVertices.txt'],'2D');
-points3D = loadUnityData([dataFolder 'frame498-worldVertices.txt'],'3D');
+dataFolder = 'Data/Hi-Res/';
+points2Dold = loadUnityData([dataFolder 'camera0-frame0-screenVertices.txt'],'2D');
+points3D = loadUnityData([dataFolder 'frame0-worldVertices.txt'],'3D');
 numPts = size(points3D,1);
-%imagePix = [1366 608];
-imagePix = [833 281];
+imagePix = [1366 608];
+%imagePix = [833 281];
 % Modify points for matlab coordinate system?
 points2D = [points2Dold(:,1) abs(points2Dold(:,2)-imagePix(2))];
 
@@ -62,7 +62,7 @@ P = getProjection(points2D,points3D);
 %% Test error for P
 %[dMat,~] = testP(cat(3,P,PMat),points2D,points3D);
 [dMat, reproj2D] = testP(P,points2D,points3D);
-[dGT, reproj2DGT] = testP(PGT,points2D,points3D);
+%[dGT, reproj2DGT] = testP(PGT,points2D,points3D);
 
 %% Plot reprojected points and GT points
 figure(1);
@@ -74,14 +74,13 @@ hold on;
 hold on;
 legend('GT','Reprojected GT','Reprojected Ours');
 axis equal;
-%axis([0 5000 0 5000]);
 
 %% Plot 2d points from worldToscreen on output images
-img = imread([dataFolder 'camera1-frame498.png']);
-figure(2);
-imshow(img);
-hold on;
-scatter(points2D(:,1),points2D(:,2));
+% img = imread([dataFolder 'camera1-frame498.png']);
+% figure(2);
+% imshow(img);
+% hold on;
+% scatter(points2D(:,1),points2D(:,2));
 
 %% Test error for cam center
 % dist = sqrt(sum((intrinsics.camCenterW - camCenterGT).^2));
