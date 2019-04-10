@@ -26,8 +26,6 @@ end
 %seq4 = [1 2 3 1 2];      % ok solution
 %seq5 = [1 2 3 4 2];      % GT solution
 
-
-
 cost1 = calcCostPair([1 1],positions,shotLengths,fs);
 cost2 = calcCostPair([1 2],positions,shotLengths,fs) + ...
         calcCostPair([1 2 3],positions,shotLengths,fs) + ...
@@ -83,10 +81,13 @@ seqCost([1,2],0,positions,shotLengths,fs,4,10);
 bestSeq = seqs(ind,:);
 
 %% Visualize results
-% 
 
+algoDataset = dataset;
+for i=1:n
+    algoDataset(i).gtCam = bestSeq(i);
+end
 
-
+visualizeTwoDatasets(dataset, algoDataset, 'comparison')
 
 %% Helpers 
 
