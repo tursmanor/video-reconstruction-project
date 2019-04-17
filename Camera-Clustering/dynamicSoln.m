@@ -84,16 +84,81 @@ toc
 [m,ind] = min(costs);
 bestSeq = seqs(ind,:);
 
+% get GT cost
+gtInd = find(n == (sum(seqs == vertcat(dataset.gtCam)',2)));
+gtCost = costs(gtInd);
+
 %% Visualize results
-%
+
 % algoDataset = dataset;
 % for i=1:n
 %     algoDataset(i).gtCam = bestSeq(i);
 % end
-%
+
 % visualizeTwoDatasets(dataset, algoDataset, 'comparison')
 
+filename = strcat('Results/','test','.gif');
+drawResults(dataset,5,gtCost,filename);
+
 %% Helpers
+% draw compact result
+function [] = drawResults(dataset,plots,gtCost,filename)
+global seqs costs;
+
+n = length(dataset);
+[~,ind] = mink(costs,plots);
+
+fovHan = zeros(1,plots+1);
+fig = figure(1);
+set(fig,'position',[0,0,1200,700]);
+
+for shots=1:n
+    
+    % draw frame 'shot' for each sequence
+    for i=1:plots
+        
+        algoDataset = dataset;
+        seq = seqs(ind(i),:);
+        for j=1:n
+            algoDataset(j).gtCam = seq(j);
+        end
+        
+        subplot(2,3,i);
+        fovHan(i) = compactVisualization(algoDataset,shots);
+        title("Sequence = " + num2str(seq) + newline + ...
+              "Cost = " + num2str(costs(ind(i))));
+        hold on;
+    
+    end
+    
+    % plot GT in bottom right corner
+    subplot(2,3,6);
+    fovHan(end) = compactVisualization(dataset,shots);
+    title("GT = " + num2str(seq) + newline + ...
+          "Cost = " + num2str(gtCost));
+    hold on;
+    
+    % save as a gif
+    im = frame2im(getframe(fig));
+    [A,map] = rgb2ind(im,256);
+    if (shots == 1)
+        imwrite(A,map,filename,'gif','LoopCount',Inf,'DelayTime', ...
+                dataset(shots).frame/30);
+    else
+        imwrite(A,map,filename,'gif','WriteMode','append', ...
+                'DelayTime',dataset(shots).frame/30);
+    end
+   
+    % turn off fov
+    if(shots > 1)
+        for i=1:plots+1
+            set(fovHan(i),'Visible','off');
+        end
+    end
+end
+
+
+end
 
 % cost based on traj opt based movement
 % setup of this function helps us m e m o i z e
