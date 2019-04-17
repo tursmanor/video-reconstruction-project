@@ -1,9 +1,10 @@
 function [optimalOut,out,positions] = pathOpt2D(initPos,endPos,camConst)
 % examples of use:
-% camConst = [5 4; 6 2; 7 4]; %left pt, center pt, right pt
-% optimal = pathOpt2D(line(:,2)', rotLine(:,2)', 0);
-% optimal2 = pathOpt2D(line(:,2)', rotLine(:,2)', camConst);
-
+% constrPos = out(ind(prevCam)).pos;
+% constraint = [constrPos(:,3)'; constrF; constrPos(:,1)'];                        
+% [curOpt,msg,posOut] = pathOpt2D(out(ind(j)).pos(:,2)', ...
+%                                 avgP(:,2)', ...
+%                                 constraint);
 %% 2d version
 % Setup
 gridN = 5;
@@ -49,7 +50,7 @@ options = optimoptions(@fmincon,'StepTolerance',1e-2,'OptimalityTolerance',1e-2,
 iterations = 40;
 outputs = zeros(gridN * 6 + 1,iterations);
 
-tic
+%tic
 parfor n=1:iterations
     % time, xpos, ypos, xvel, yvel, xacc, yacc
     x0 = [1;
@@ -70,7 +71,7 @@ parfor n=1:iterations
     outputs(:,n) = optimal;
     outMsg(:,n) = out;
 end
-toc
+%toc
 
 [~,bestInd] = min(outputs(1,:));
 optimalOut = outputs(:,bestInd);

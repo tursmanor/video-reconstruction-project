@@ -1,10 +1,9 @@
 %% Dynamic setup for clustering
 close all; clearvars;
 
-% To-do
-% 4. visualize results
-
 %% Load data
+global positions shotLengths fs;
+
 load 'Results/dataset-test2.mat';
 n = length(dataset);
 positions = zeros(n,6);
@@ -26,210 +25,232 @@ end
 %seq4 = [1 2 3 1 2];      % ok solution
 %seq5 = [1 2 3 4 2];      % GT solution
 
-cost1 = calcCostPair([1 1],positions,shotLengths,fs);
-cost2 = calcCostPair([1 2],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4 3],positions,shotLengths,fs);
-cost3 = calcCostPair([1 2],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4 1],positions,shotLengths,fs);
-cost4 = calcCostPair([1 2],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 1],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 1 2],positions,shotLengths,fs);
-cost5 = calcCostPair([1 2],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4 2],positions,shotLengths,fs);
-cost6 = calcCostPair([1 2],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4 2],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4 2 3],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4 2 3 2],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4 2 3 2 4],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4 2 3 2 4 1],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4 2 3 2 4 1 3],positions,shotLengths,fs);
-cost7 = calcCostPair([1 2],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4 2],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4 2 3],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4 2 3 2],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4 2 3 2 3],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4 2 3 2 3 2],positions,shotLengths,fs) + ...
-        calcCostPair([1 2 3 4 2 3 2 3 2 3],positions,shotLengths,fs);   
-    
-if (cost1 == -inf), disp('Sequence 1 pass'), else, disp('Sequence 1 fail'), end
-if (cost2 == -inf), disp('Sequence 2 pass'), else, disp('Sequence 2 fail'), end
-if (cost3 ~= -inf), disp('Sequence 3 non inf'), else, disp('Sequence 3 fail'), end
-if (cost4 ~= -inf), disp('Sequence 4 non inf'), else, disp('Sequence 4 fail'), end
-if (cost5 ~= -inf), disp('Sequence 5 non inf'), else, disp('Sequence 5 fail'), end
-if (cost3 > cost5 && cost4 > cost5), disp('GT sequence best'), else, disp('GT sequence not best'), end
-if (cost6 < cost7), disp('Tree soln smaller'), else, disp('GT soln smaller'), end
+% cost1 = calcCostPair([1 1],positions,shotLengths,fs);
+% cost2 = calcCostPair([1 2],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4 3],positions,shotLengths,fs);
+% cost3 = calcCostPair([1 2],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4 1],positions,shotLengths,fs);
+% cost4 = calcCostPair([1 2],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 1],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 1 2],positions,shotLengths,fs);
+% cost5 = calcCostPair([1 2],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4 2],positions,shotLengths,fs);
+% cost6 = calcCostPair([1 2],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4 2],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4 2 3],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4 2 3 2],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4 2 3 2 4],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4 2 3 2 4 1],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4 2 3 2 4 1 3],positions,shotLengths,fs);
+% cost7 = calcCostPair([1 2],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4 2],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4 2 3],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4 2 3 2],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4 2 3 2 3],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4 2 3 2 3 2],positions,shotLengths,fs) + ...
+%         calcCostPair([1 2 3 4 2 3 2 3 2 3],positions,shotLengths,fs);
+%
+% if (cost1 == -inf), disp('Sequence 1 pass'), else, disp('Sequence 1 fail'), end
+% if (cost2 == -inf), disp('Sequence 2 pass'), else, disp('Sequence 2 fail'), end
+% if (cost3 ~= -inf), disp('Sequence 3 non inf'), else, disp('Sequence 3 fail'), end
+% if (cost4 ~= -inf), disp('Sequence 4 non inf'), else, disp('Sequence 4 fail'), end
+% if (cost5 ~= -inf), disp('Sequence 5 non inf'), else, disp('Sequence 5 fail'), end
+% if (cost3 > cost5 && cost4 > cost5), disp('GT sequence best'), else, disp('GT sequence not best'), end
+% if (cost6 < cost7), disp('Tree soln smaller'), else, disp('GT soln smaller'), end
 
 %% Build tree
-global costs seqs;
+global costs seqs memCost;
 seqs = [];
 costs = [];
 
-seqCost([1,2],0,positions,shotLengths,fs,4,10);
+memCost = memoize(@calcCostPairTrajOptMem);
+memCost.CacheSize = 100;
+
+tic
+seqCost([1,2],0,4,10,1);
+toc
 
 [m,ind] = min(costs);
 bestSeq = seqs(ind,:);
 
 %% Visualize results
+%
+% algoDataset = dataset;
+% for i=1:n
+%     algoDataset(i).gtCam = bestSeq(i);
+% end
+%
+% visualizeTwoDatasets(dataset, algoDataset, 'comparison')
 
-algoDataset = dataset;
-for i=1:n
-    algoDataset(i).gtCam = bestSeq(i);
+%% Helpers
+
+% cost based on traj opt based movement
+% setup of this function helps us m e m o i z e
+function cost = calcCostPairTrajOptMem(initShot,endShot)
+
+global positions shotLengths fs;
+
+% camera has not appeared before
+if initShot == 0
+    cost = 0;
+else
+    
+    prevPos = reshape(positions(initShot,:),[2,3]);
+    curPos = reshape(positions(endShot,:),[2,3]);
+    conPos = reshape(positions(endShot-1,:),[2,3]);
+    
+    prevPos = prevPos(:,2)';
+    curPos = curPos(:,2)';
+    conPos = [conPos(:,3)'; fs(endShot-1,:); conPos(:,1)'];
+    
+    % use traj opt to get path feasibility
+    [optimalOut,~,pos] = pathOpt2D(prevPos,curPos,conPos);
+    time = optimalOut(1);
+    
+    % check if constraint intersection occurs, otherwise accumulate
+    % distance traveled, with penalty added based on how much over frame
+    % time we go
+    if (time == inf)
+        cost = -inf;
+        return;
+    else
+        d = 0;
+        for i=1:(size(pos,1)-1)
+            d = d + norm(pos(i+1,:) - pos(i,:));
+        end
+        
+        alpha = 0.1;
+        cost = d + (alpha * abs(time - (shotLengths(endShot)/30)));
+    end   
 end
 
-visualizeTwoDatasets(dataset, algoDataset, 'comparison')
+end
 
-%% Helpers 
+% assumes pair is at the end of the input sequence
+% cost is based on traj opt based movement
+function cost = calcCostPairTrajOpt(sequence)
+global positions shotLengths fs;
+
+cost = 0;
+
+prevCam = sequence(end-1);
+curCam = sequence(end);
+
+if (prevCam == curCam)
+    cost = -inf;
+    return;
+end
+
+curSize = size(sequence,2);
+[indx] = lastAppearance(curSize,sequence);
+
+if (indx ~= 0)
+    
+    prevPos = reshape(positions(indx,:),[2,3]);
+    curPos = reshape(positions(curSize,:),[2,3]);
+    conPos = reshape(positions(curSize-1,:),[2,3]);
+    
+    prevPos = prevPos(:,2)';
+    curPos = curPos(:,2)';
+    conPos = [conPos(:,3)'; fs(curSize-1,:); conPos(:,1)'];
+    
+    % use traj opt to get path feasibility
+    [optimalOut,~,pos] = pathOpt2D(prevPos,curPos,conPos);
+    time = optimalOut(1);
+    
+    % check if constraint intersection occurs, otherwise accumulate
+    % distance traveled, with penalty added based on how much over frame
+    % time we go
+    if (time == inf)
+        cost = -inf;
+        return;
+    else
+        d = 0;
+        for i=1:(size(pos,1)-1)
+            d = d + norm(pos(i+1,:) - pos(i,:));
+        end
+        
+        alpha = 0.1;
+        cost = d + (alpha * abs(time - (shotLengths(curSize)/30)));
+    end
+    
+end
+
+end
 
 % only looks at one pair of assignments at a point in the sequence
 % assume that pair is at the end of the input sequence
-function cost = calcCostPair(sequence,positions,shotLengths,fs)
- cost = 0;
- 
- prevCam = sequence(end-1);
- curCam = sequence(end);
- 
- if (prevCam == curCam)
-     cost = -inf;
-     return;
- end
- 
- curSize = size(sequence,2);
- [indx] = lastAppearance(curSize,sequence);
- 
- if (indx ~= 0)
-     
-     prevPos = positions(indx,:);
-     curPos = positions(curSize,:);
-     conPos = positions(curSize-1,:);
-     
-     % set up line intersection as a system of linear equations
-     aVal = @(x1,x2,y1,y2) -(x2 - x1)/(y2 - y1);
-     bVal = @(x1,x2,y1,y2) (-y1 * ((x2-x1)/(y2-y1))) + x1;
-     slope = @(x1,x2,y1,y2) (y2 - y1)/(x2 - x1);
-     
-     aValPath = aVal(prevPos(3),curPos(3),prevPos(4),curPos(4));
-     bValPath = bVal(prevPos(3),curPos(3),prevPos(4),curPos(4));
-     pathSlope = slope(prevPos(3),curPos(3),prevPos(4),curPos(4));
-     
-     aValLeft = aVal(conPos(5),fs(curSize-1,1),conPos(6),fs(curSize-1,2));
-     bValLeft = bVal(conPos(5),fs(curSize-1,1),conPos(6),fs(curSize-1,2));
-     aValRight = aVal(conPos(1),fs(curSize-1,1),conPos(2),fs(curSize-1,2));
-     bValRight = bVal(conPos(1),fs(curSize-1,1),conPos(2),fs(curSize-1,2));
-     
-     ALeft =  [1 aValLeft; 1 aValPath];
-     ARight = [1 aValRight; 1 aValPath];
-     bLeft =  [bValLeft; bValPath];
-     bRight = [bValRight; bValPath];
-     
-     leftIntersect = ALeft\bLeft;
-     rightIntersect = ARight\bRight;
-            
-     % check if intersection occurs, otherwise accumulate distance
-     % traveled
-     if (~testIntersectionBounds(leftIntersect, pathSlope, fs(curSize-1,:), curPos(3:4), prevPos(3:4)) || ...
-         ~testIntersectionBounds(rightIntersect, pathSlope, fs(curSize-1,:), curPos(3:4), prevPos(3:4)))
-         cost = -inf;
-         return;
-     else
-         % using d/v = t, where v is one m/s
-         d = norm(prevPos(3:4) - positions(curSize,3:4));
-         alpha = 0.1;
-         cost = cost + d + (alpha * abs(d - shotLengths(curSize)));
-     end
-     
- end
- 
+% cost is based on straight line movement
+function cost = calcCostPair(sequence)
+global positions shotLengths fs;
+
+cost = 0;
+
+prevCam = sequence(end-1);
+curCam = sequence(end);
+
+if (prevCam == curCam)
+    cost = -inf;
+    return;
 end
 
-% Calculate cost of a given camera sequence
-%
-% Output: 
-% cost         - cost of camera sequence
-%
-% Input:
-% sequence     - sequence of camera assignments
-% positions    - positions associated with each shot
-% shotLengths  - lengths associated with each shot
-% fs           - focal lengths associated with each shot
-function [cost] = calcCost(sequence,positions,shotLengths,fs)
-    cost = 0;
+curSize = size(sequence,2);
+[indx] = lastAppearance(curSize,sequence);
+
+if (indx ~= 0)
     
-    % Costs:
-    % -inf if same camera appears twice in a row
-    % -inf if straight line movement passes through constraint region
-    % accumulate distance traveled as cost
-    % if travel time is more than shot length, penalize by alpha
-    prevCam = sequence(1);
-    for i=2:length(sequence)
-        
-        curCam = sequence(i);
-        if (prevCam == curCam)
-            cost = -inf;
-            return;
-        end
-            
-        % check if cur camera has appeared before, if so, see if its path
-        % intersects the constraint region-- in other words, see if its
-        % path intersects either of the lines defining the constraint
-        [indx] = lastAppearance(i,sequence);
-        
-        if (indx ~= 0)
-            
-            prevPos = positions(indx,:);
-            curPos = positions(i,:);
-            conPos = positions(i-1,:);
-            
-            % set up line intersection as a system of linear equations
-            aVal = @(x1,x2,y1,y2) -(x2 - x1)/(y2 - y1);
-            bVal = @(x1,x2,y1,y2) (-y1 * ((x2-x1)/(y2-y1))) + x1;
-            slope = @(x1,x2,y1,y2) (y2 - y1)/(x2 - x1);
-            
-            aValPath = aVal(prevPos(3),curPos(3),prevPos(4),curPos(4));
-            bValPath = bVal(prevPos(3),curPos(3),prevPos(4),curPos(4));
-            pathSlope = slope(prevPos(3),curPos(3),prevPos(4),curPos(4));
-            
-            aValLeft = aVal(conPos(5),fs(i-1,1),conPos(6),fs(i-1,2));
-            bValLeft = bVal(conPos(5),fs(i-1,1),conPos(6),fs(i-1,2));
-            aValRight = aVal(conPos(1),fs(i-1,1),conPos(2),fs(i-1,2));
-            bValRight = bVal(conPos(1),fs(i-1,1),conPos(2),fs(i-1,2));
-            
-            ALeft =  [1 aValLeft; 1 aValPath];
-            ARight = [1 aValRight; 1 aValPath];
-            bLeft =  [bValLeft; bValPath];
-            bRight = [bValRight; bValPath];
-            
-            leftIntersect = ALeft\bLeft;
-            rightIntersect = ARight\bRight;
-            
-            % check if intersection occurs, otherwise accumulate distance
-            % traveled
-            if (~testIntersectionBounds(leftIntersect, pathSlope, fs(i-1,:), curPos(3:4), prevPos(3:4)) || ...
-                    ~testIntersectionBounds(rightIntersect, pathSlope, fs(i-1,:), curPos(3:4), prevPos(3:4)))
-                cost = -inf;
-                return;
-            else
-                % using d/v = t, where v is one m/s
-                d = norm(prevPos(3:4) - positions(i,3:4));
-                alpha = 0.1;
-                cost = cost + d + (alpha * abs(d - shotLengths(i)));
-            end
-            
-        end
-        
-        prevCam = curCam;
-        
+    prevPos = positions(indx,:);
+    curPos = positions(curSize,:);
+    conPos = positions(curSize-1,:);
+    
+    % set up line intersection as a system of linear equations
+    aVal = @(x1,x2,y1,y2) -(x2 - x1)/(y2 - y1);
+    bVal = @(x1,x2,y1,y2) (-y1 * ((x2-x1)/(y2-y1))) + x1;
+    slope = @(x1,x2,y1,y2) (y2 - y1)/(x2 - x1);
+    
+    aValPath = aVal(prevPos(3),curPos(3),prevPos(4),curPos(4));
+    bValPath = bVal(prevPos(3),curPos(3),prevPos(4),curPos(4));
+    pathSlope = slope(prevPos(3),curPos(3),prevPos(4),curPos(4));
+    
+    aValLeft = aVal(conPos(5),fs(curSize-1,1),conPos(6),fs(curSize-1,2));
+    bValLeft = bVal(conPos(5),fs(curSize-1,1),conPos(6),fs(curSize-1,2));
+    aValRight = aVal(conPos(1),fs(curSize-1,1),conPos(2),fs(curSize-1,2));
+    bValRight = bVal(conPos(1),fs(curSize-1,1),conPos(2),fs(curSize-1,2));
+    
+    ALeft =  [1 aValLeft; 1 aValPath];
+    ARight = [1 aValRight; 1 aValPath];
+    bLeft =  [bValLeft; bValPath];
+    bRight = [bValRight; bValPath];
+    
+    leftIntersect = ALeft\bLeft;
+    rightIntersect = ARight\bRight;
+    
+    % check if intersection occurs, otherwise accumulate distance
+    % traveled
+    if (~testIntersectionBounds(leftIntersect, pathSlope, fs(curSize-1,:), curPos(3:4), prevPos(3:4)) || ...
+            ~testIntersectionBounds(rightIntersect, pathSlope, fs(curSize-1,:), curPos(3:4), prevPos(3:4)))
+        cost = -inf;
+        return;
+    else
+        % using d/v = t, where v is one m/s
+        d = norm(prevPos(3:4) - positions(curSize,3:4));
+        alpha = 0.1;
+        cost = d + (alpha * abs(d - shotLengths(curSize)));
     end
+    
+end
+
 end
 
 % returns 0 if the intersection happens in a constraint region, 1 if not
@@ -265,7 +286,7 @@ if (pt(2) > f(2))
                 valid = false;
             end
             
-        % path is pointing left
+            % path is pointing left
         else
             
             % point of intersection is smaller in x and y than path end
@@ -277,13 +298,13 @@ if (pt(2) > f(2))
             
         end
         
-    % negative slope
+        % negative slope
     elseif (pSlope < 0)
         
         % path is pointing right
         if(right)
             
-            % point of intersection is larger in x and smaller in y than 
+            % point of intersection is larger in x and smaller in y than
             % path end
             if(pt(1) > pEnd(1) && pt(2) < pEnd(2))
                 valid = true;
@@ -291,24 +312,24 @@ if (pt(2) > f(2))
                 valid = false;
             end
             
-        % path is pointing left
+            % path is pointing left
         else
             
-            % point of intersection is smaller in x and bigger in y than 
+            % point of intersection is smaller in x and bigger in y than
             % path end
             if(pt(1) < pEnd(1) && pt(2) > pEnd(2))
                 valid = true;
             else
                 valid = false;
-            end  
+            end
         end
-            
-    % straight line    
+        
+        % straight line
     else
         
         % path is pointing right
         if(right)
-          
+            
             % point of intersection larger in x than path end
             if (pt(1) > pEnd(1))
                 valid = true;
@@ -316,7 +337,7 @@ if (pt(2) > f(2))
                 valid = false;
             end
             
-        % path is pointing left    
+            % path is pointing left
         else
             
             % point of intersection smaller in x than path end
@@ -324,8 +345,8 @@ if (pt(2) > f(2))
                 valid = true;
             else
                 valid = false;
-            end     
-        end   
+            end
+        end
     end
     
 else
@@ -337,42 +358,51 @@ end
 % returns most recent instance of camera before curInd, 0 if it doesn't
 % appear before curInd
 function [indx] = lastAppearance(curInd,sequence)
-    
-    indx = 0;
-    cameraId = sequence(curInd);
-    
-    for i=(curInd-1):-1:1
-        if (sequence(i) == cameraId)
-            indx = i;
-        break;
-        end
-    end
-    
-end
-    
-% build a tree that keeps track of cost of each walk/sequence 
-function [] = seqCost(curSeq,curCost,positions,shotLengths,fs,k,n)
 
-global costs seqs;
+indx = 0;
+cameraId = sequence(curInd);
+
+for i=(curInd-1):-1:1
+    if (sequence(i) == cameraId)
+        indx = i;
+        break;
+    end
+end
+
+end
+
+% build a tree that keeps track of cost of each walk/sequence
+function [] = seqCost(curSeq,curCost,k,n,memo)
+
+global costs seqs memCost;
 
 % base cases
 if (curCost == -inf)
     return;
     
 elseif (size(curSeq,2) == n)
-   costs = [costs curCost];
-   seqs = [seqs; curSeq];
-
-% recursive case
+    costs = [costs curCost];
+    seqs = [seqs; curSeq];
+    % testing
+    size(costs)
+    
+    % recursive case
 else
     prevCam = curSeq(end);
     nextCam = 1:min(max(curSeq)+1,k);
     nextCam = nextCam(nextCam~=prevCam);
     
     for i = nextCam
-        nextCost = calcCostPair([curSeq i],positions,shotLengths,fs);
-        seqCost([curSeq i], curCost + nextCost, ...
-                positions,shotLengths,fs,k,n);
+        
+        if (memo == 1)
+            curLen = length(curSeq) + 1;
+            nextCost = memCost(lastAppearance(curLen,[curSeq i]),curLen);
+        else
+            nextCost = calcCostPair([curSeq i]);
+        end
+        
+        seqCost([curSeq i],curCost + nextCost,k,n,memo);
+        
     end
 end
 
