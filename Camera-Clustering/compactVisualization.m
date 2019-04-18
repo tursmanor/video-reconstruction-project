@@ -14,13 +14,7 @@ for i=1:n
 end
 
 if (shotNum == 1)
-    for i=1:n
-        [avgP,~] = avgCamera(dataset(i).pos,dataset(i).f);
-        curPos = avgP(:,2);
-        positions(:,i) = curPos;
-        scatter(curPos(1),curPos(2));
-        hold on;    
-    end
+    drawScatter(dataset,n,'k')
     fovHan = 0;
 else
     % draw path for shotNum in shot sequence
@@ -30,6 +24,8 @@ else
     % draw constraint
     [avgP,avgF] = avgCamera(dataset(shotNum-1).pos,dataset(shotNum-1).f);
     fovHan = drawCameraFOV(avgP,avgF,getColor(prevCam));
+    scatter(positions(1,shotNum-1),positions(2,shotNum-1),'filled',getColor(prevCam));
+    hold on;
     
     ind = lastAppearance(shotNum,cameraSeq);
     
@@ -37,10 +33,28 @@ else
         pt2 = positions(:,shotNum);
         pt1 = positions(:,ind);
         diff = pt2 - pt1;
-        quiver(pt1(1),pt1(2),diff(1),diff(2),'color',getColor(curCam));
+        quiver(pt1(1),pt1(2),diff(1),diff(2),'color',getColor(curCam),'MaxHeadSize',2/norm(pt2-pt1));
+        hold on;
+        scatter([pt1(1) pt2(1)],[pt1(2) pt2(2)],'filled',getColor(curCam));
+        hold on;
+    else
+        pt2 = positions(:,shotNum);
+        scatter(pt2(1),pt2(2),'filled',getColor(curCam));
         hold on;
     end
+    
 end
+
+end
+
+function [] = drawScatter(dataset,n,color)
+
+    for i=1:n
+        [avgP,~] = avgCamera(dataset(i).pos,dataset(i).f);
+        curPos = avgP(:,2);
+        scatter(curPos(1),curPos(2),'filled',color);
+        hold on;    
+    end
 
 end
 
