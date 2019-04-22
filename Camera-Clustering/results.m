@@ -156,69 +156,69 @@ close all; clearvars;
 % end
 
 % analysis
-load round3-experiment4-1.mat
-
-n = 10;
-acc = 0;
-diff = 0;
-sameCamNum = 0;
-hist = [];
-for i=1:n
-    
-    algoOut = vertcat(datasets(i).Algo.cam);
-    gtOut = vertcat(datasets(i).GT.gtCam); 
-    accuracy = sum(algoOut == gtOut) / 10;
-    acc = acc + accuracy;
-    
-    k1 = max(vertcat(datasets(i).GT.gtCam));
-    k2 = max(vertcat(datasets(i).Algo.cam));    
-    sameCamNum = sameCamNum + abs((k2 - k1) / k1);
-    
-    d = distanceComparison(datasets(i).GT, datasets(i).Algo);
-    if (d(1) ~= 0)
-        diff = diff + abs(((d(2)-d(1)) / d(1)));
-    end
-    hist = [hist d(1)-d(2)];
-end
-
-acc / n
-diff / n
-sameCamNum / n
+% load round3-experiment4-1.mat
+% 
+% n = 10;
+% acc = 0;
+% diff = 0;
+% sameCamNum = 0;
+% hist = [];
+% for i=1:n
+%     
+%     algoOut = vertcat(datasets(i).Algo.cam);
+%     gtOut = vertcat(datasets(i).GT.gtCam); 
+%     accuracy = sum(algoOut == gtOut) / 10;
+%     acc = acc + accuracy;
+%     
+%     k1 = max(vertcat(datasets(i).GT.gtCam));
+%     k2 = max(vertcat(datasets(i).Algo.cam));    
+%     sameCamNum = sameCamNum + abs((k2 - k1) / k1);
+%     
+%     d = distanceComparison(datasets(i).GT, datasets(i).Algo);
+%     if (d(1) ~= 0)
+%         diff = diff + abs(((d(2)-d(1)) / d(1)));
+%     end
+%     hist = [hist d(1)-d(2)];
+% end
+% 
+% acc / n
+% diff / n
+% sameCamNum / n
 % histogram(hist,50); hold on;
 % ylabel('count');
 % xlabel('GT Distance - Algo Distance');
 % title('Experiment One Results');
 
 %% Plotting for 4, try 2
-
-xdata = [0.01,0.2,0.4,0.6,0.8,1];
-acc = [0.98,0.97,0.93,0.95,0.84,0.83];
-distErr = [0.003,0.0551,0.0949,0.11,0.1124,0.182];
-camNum = [0,0,0.0750,0.1,0.25,0.25];
-
-
-% xdata = [0.01,0.2,0.4,0.6,0.8,1];
-% acc = [0.98,0.92,0.87,0.79,0.88,0.82];
-% distErr = [0.0030,0.1215,0.2088,0.2972,0.1161,0.3643];
-% camNum = [0,0,0.0750,0.2750,0.10,0.1750];
 % 
-figure;
-plot(xdata,acc); hold on;
-xlabel('Noise Added to Position');
-ylabel('Clustering Accuracy');
-title('Clustering Accuracy v Noise');
-
-figure;
-plot(xdata,camNum); hold on;
-xlabel('Noise Added to Position');
-ylabel('Camera Number Percent Error');
-title('Camera Number Percent Error v Noise');
-
-figure;
-plot(xdata,distErr); hold on;
-xlabel('Noise Added to Position');
-ylabel('Distance Percent Error');
-title('Distance Percent Error v Noise');
+% xdata = [0.01,0.2,0.4,0.6,0.8,1];
+% acc = [0.98,0.97,0.93,0.95,0.84,0.83];
+% distErr = [0.003,0.0551,0.0949,0.11,0.1124,0.182];
+% camNum = [0,0,0.0750,0.1,0.25,0.25];
+% 
+% 
+% % xdata = [0.01,0.2,0.4,0.6,0.8,1];
+% % acc = [0.98,0.92,0.87,0.79,0.88,0.82];
+% % distErr = [0.0030,0.1215,0.2088,0.2972,0.1161,0.3643];
+% % camNum = [0,0,0.0750,0.2750,0.10,0.1750];
+% % 
+% figure;
+% plot(xdata,acc); hold on;
+% xlabel('Noise Added to Position');
+% ylabel('Clustering Accuracy');
+% title('Clustering Accuracy v Noise');
+% 
+% figure;
+% plot(xdata,camNum); hold on;
+% xlabel('Noise Added to Position');
+% ylabel('Camera Number Percent Error');
+% title('Camera Number Percent Error v Noise');
+% 
+% figure;
+% plot(xdata,distErr); hold on;
+% xlabel('Noise Added to Position');
+% ylabel('Distance Percent Error');
+% title('Distance Percent Error v Noise');
 
 
 %% Plotting stuff for experiment 4

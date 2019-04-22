@@ -1,5 +1,6 @@
 %% Dynamic setup for clustering
 close all; clearvars;
+% clearAllMemoizedCaches
 
 %% Load data
 global positions shotLengths fs;
@@ -88,17 +89,18 @@ bestSeq = seqs(ind,:);
 gtInd = find(n == (sum(seqs == vertcat(dataset.gtCam)',2)));
 gtCost = costs(gtInd);
 
+save('DynamicTraj','costs','seqs','gtInd');
+
 %% Visualize results
 
 % algoDataset = dataset;
 % for i=1:n
 %     algoDataset(i).gtCam = bestSeq(i);
 % end
-
 % visualizeTwoDatasets(dataset, algoDataset, 'comparison')
 
-filename = strcat('Results/','test','.gif');
-drawResults(dataset,5,gtCost,filename);
+%filename = strcat('Results/','test','.gif');
+%drawResults(dataset,5,gtCost,filename);
 
 %% Helpers
 % draw compact result
@@ -196,60 +198,8 @@ else
         end
         
         alpha = 0.1;
-        cost = d + (alpha * abs(time - (shotLengths(endShot)/30)));
+        cost = d; %+ (alpha * abs(time - (shotLengths(endShot)/30)));
     end   
-end
-
-end
-
-% assumes pair is at the end of the input sequence
-% cost is based on traj opt based movement
-function cost = calcCostPairTrajOpt(sequence)
-global positions shotLengths fs;
-
-cost = 0;
-
-prevCam = sequence(end-1);
-curCam = sequence(end);
-
-if (prevCam == curCam)
-    cost = -inf;
-    return;
-end
-
-curSize = size(sequence,2);
-[indx] = lastAppearance(curSize,sequence);
-
-if (indx ~= 0)
-    
-    prevPos = reshape(positions(indx,:),[2,3]);
-    curPos = reshape(positions(curSize,:),[2,3]);
-    conPos = reshape(positions(curSize-1,:),[2,3]);
-    
-    prevPos = prevPos(:,2)';
-    curPos = curPos(:,2)';
-    conPos = [conPos(:,3)'; fs(curSize-1,:); conPos(:,1)'];
-    
-    % use traj opt to get path feasibility
-    [optimalOut,~,pos] = pathOpt2D(prevPos,curPos,conPos);
-    time = optimalOut(1);
-    
-    % check if constraint intersection occurs, otherwise accumulate
-    % distance traveled, with penalty added based on how much over frame
-    % time we go
-    if (time == inf)
-        cost = -inf;
-        return;
-    else
-        d = 0;
-        for i=1:(size(pos,1)-1)
-            d = d + norm(pos(i+1,:) - pos(i,:));
-        end
-        
-        alpha = 0.1;
-        cost = d + (alpha * abs(time - (shotLengths(curSize)/30)));
-    end
-    
 end
 
 end
@@ -311,7 +261,7 @@ if (indx ~= 0)
         % using d/v = t, where v is one m/s
         d = norm(prevPos(3:4) - positions(curSize,3:4));
         alpha = 0.1;
-        cost = d + (alpha * abs(d - shotLengths(curSize)));
+        cost = d; %+ (alpha * abs(d - (shotLengths(curSize)/30)));
     end
     
 end
