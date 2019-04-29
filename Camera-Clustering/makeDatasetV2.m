@@ -103,20 +103,20 @@ for curShot = 2:n
     dataset(curShot).A = areas;
     
     % visualize results for current frame for debugging
-    if(curShot > 2)
-        color = ['r' 'b' 'g' 'c'];
-        figure(1);
-        clf;
-        axis(sceneSize); hold on;
-        fill(curConstraint(:,1),curConstraint(:,2),color(prevCam),'FaceAlpha',0.6); hold on;
-        for i=1:4
-            if (~isempty(areas{i}))
-                pts = areas{i};
-                fill(pts(:,1),pts(:,2),color(i),'FaceAlpha',0.3); hold on;
-            end
-        end
-        pause;
-    end
+%     if(curShot > 2)
+%         color = ['r' 'b' 'g' 'c'];
+%         figure(1);
+%         clf;
+%         axis(sceneSize); hold on;
+%         fill(curConstraint(:,1),curConstraint(:,2),color(prevCam),'FaceAlpha',0.6); hold on;
+%         for i=1:4
+%             if (~isempty(areas{i}))
+%                 pts = areas{i};
+%                 fill(pts(:,1),pts(:,2),color(i),'FaceAlpha',0.3); hold on;
+%             end
+%         end
+%         pause;
+%     end
 end
 
 %% Refactor numbering
@@ -141,6 +141,17 @@ for curShot = 1:n
    indx = find(assignments(1,:) == curGT);
    newGT = assignments(2,indx);
    dataset(curShot).gtCam = newGT;
+end
+
+for curShot = 1:n 
+    curA = dataset(curShot).A;
+    newA = {[] [] [] []};
+    newA(assignments(2,1)) = curA(assignments(1,1));
+    newA(assignments(2,2)) = curA(assignments(1,2));
+    newA(assignments(2,3)) = curA(assignments(1,3));
+    newA(assignments(2,4)) = curA(assignments(1,4));
+   
+    dataset(curShot).A = newA;
 end
 
 save('datasetv2','dataset');
@@ -212,14 +223,14 @@ constraints = [pos(:,3)'; f; pos(:,1)'];
 
 if (slopeL > 0)
     boundX1 = [sceneSize(2)+10 sceneSize(2)+10];
-    boundY1 = [sceneSize(3) sceneSize(4)+1000];
+    boundY1 = [sceneSize(3) sceneSize(4)+10000];
     boundX2 = [sceneSize(1)-10 sceneSize(1)-10];
-    boundY2 = [sceneSize(3) sceneSize(4)+1000];
+    boundY2 = [sceneSize(3) sceneSize(4)+10000];
 else
     boundX1 = [sceneSize(1)-10 sceneSize(1)-10];
-    boundY1 = [sceneSize(3) sceneSize(4)+1000];
+    boundY1 = [sceneSize(3) sceneSize(4)+10000];
     boundX2 = [sceneSize(2)+10 sceneSize(2)+10];
-    boundY2 = [sceneSize(3) sceneSize(4)+1000];
+    boundY2 = [sceneSize(3) sceneSize(4)+10000];
 end
 
 [x1,y1] = polyxpoly([pos(1,3) boundX1(1)],[pos(2,3) lLine(boundX1(1))],boundX1,boundY1);
@@ -241,7 +252,7 @@ end
 % radius [radius] to create a polygon
 function [pts] = samplePoints(center, radius)
 
-theta = pi/4;
+theta = pi/8;
 pts = [];
 curAngle = 0;
 while (curAngle < (2*pi))
