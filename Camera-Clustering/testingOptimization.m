@@ -18,20 +18,20 @@ constraint4 = [constrP4(:,3)'; constrF4; constrP4(:,1)'];
 makeLine = @(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
 
 %% Testing reproducibility
-path4 = [5 8; 8 5];
-
-for i=1:10
-    [output,msg4,out4] = pathOpt2D(path4(:,1),path4(:,2),constraint3);
-    
-    if (msg4.message(1:13) == 'Local minimum')
-        disp('path4 pass')
-    else
-        disp('path4 fail')
-    end
-    
-    testPlotResults(constrP3,constrF3,path4,out4,makeLine);
-    
-end
+% path4 = [5 8; 8 5];
+% 
+% for i=1:10
+%     [output,msg4,out4] = pathOpt2D(path4(:,1),path4(:,2),constraint3);
+%     
+%     if (msg4.message(1:13) == 'Local minimum')
+%         disp('path4 pass')
+%     else
+%         disp('path4 fail')
+%     end
+%     
+%     testPlotResults(constrP3,constrF3,path4,out4,makeLine);
+%     
+% end
 
 %% Valid Setups
 path1 = [4 6; 6 6];     % for constraint 1
@@ -54,7 +54,7 @@ for i=1:7
     curPath = strcat('path',num2str(i));
     curMsg = eval(strcat('msg',num2str(i)));
     
-if (curMsg.message(1:13) == 'Local minimum')
+if (strcmp(curMsg.message(2:6),'Local'))
     disp([curPath ' pass'])
 else 
     disp([curPath ' fail'])
