@@ -3,7 +3,7 @@
 close all; clearvars;
 
 % TODO
-% --
+% debug
 
 %% Setup vars
 n = 10;
@@ -93,8 +93,8 @@ for curShot = 2:n
             newCam = randi([1 k]);
         end
         
-        [pos,f,areas] = getPositionWrapper(newCam,curShot,dataset,fAll,sensorWidth,areas,sceneSize);
         dataset(curShot).gtCam = newCam;
+        [pos,f,areas] = getPositionWrapper(newCam,curShot,dataset,fAll,sensorWidth,areas,sceneSize);
         goodPos = isGoodPosition(k,pos,f,sceneSize,activeCamPos,newCam);    
     end
      
@@ -121,7 +121,8 @@ end
 
 %% Refactor numbering
 % refactor camera numbering so that it aligns with clustering expectations
-assignments = zeros(2,k);
+numCams = max(vertcat(dataset.gtCam));
+assignments = zeros(2,numCams);
 assignments(1,1) = dataset(1).gtCam;
 assignments(2,1) = 1;
 assignments(1,2) = dataset(2).gtCam;
@@ -145,12 +146,10 @@ end
 
 for curShot = 1:n 
     curA = dataset(curShot).A;
-    newA = {[] [] [] []};
-    newA(assignments(2,1)) = curA(assignments(1,1));
-    newA(assignments(2,2)) = curA(assignments(1,2));
-    newA(assignments(2,3)) = curA(assignments(1,3));
-    newA(assignments(2,4)) = curA(assignments(1,4));
-   
+    newA = cell(1,numCams); 
+    for i=1:numCams
+        newA(assignments(2,i)) = curA(assignments(1,i));
+    end  
     dataset(curShot).A = newA;
 end
 
@@ -172,7 +171,10 @@ for i=1:k
             continue;
         else
             in = inpolygon(tmpPos(1),tmpPos(2),newCamFOV(:,1),newCamFOV(:,2));
-            results = results + in;
+            in2 = inpolygon(tmpPos(3),tmpPos(4),newCamFOV(:,1),newCamFOV(:,2));
+            in3 = inpolygon(tmpPos(5),tmpPos(6),newCamFOV(:,1),newCamFOV(:,2));
+            in4 = inpolygon(tmpPos(7),tmpPos(8),newCamFOV(:,1),newCamFOV(:,2));
+            results = results + in + in2 + in3 + in4;
         end
     end
 end
@@ -188,13 +190,16 @@ end
 % return a matrix of the current known positions for each camera
 function [activeCamPos] = activeCameras(k,dataset,curShot)
 
-activeCamPos = zeros(k,2);
+activeCamPos = zeros(k,8);
 for i=1:k
     ind = getPrevCamShot(i,curShot,dataset);
     if (ind == 0)
-        activeCamPos(i,:) = [0 0];
+        activeCamPos(i,:) = zeros(1,8);
     else
-        activeCamPos(i,:) = dataset(ind).pos(:,2)';
+        activeCamPos(i,1:2) = dataset(ind).pos(:,1)';
+        activeCamPos(i,3:4) = dataset(ind).pos(:,2)';
+        activeCamPos(i,5:6) = dataset(ind).pos(:,3)';
+        activeCamPos(i,7:8) = dataset(ind).f;
     end
 end
 
@@ -252,7 +257,7 @@ end
 % radius [radius] to create a polygon
 function [pts] = samplePoints(center, radius)
 
-theta = pi/8;
+theta = pi/16;
 pts = [];
 curAngle = 0;
 while (curAngle < (2*pi))
@@ -281,7 +286,7 @@ for i = 1:size(curPolygon,1)
     allPts = [allPts; pts];   
 end
 
-boundInd = boundary(allPts(:,1),allPts(:,2),0.2);
+boundInd = boundary(allPts(:,1),allPts(:,2),0.1);
 newPolygon = allPts(boundInd,:);
 
 % bounds clamping
@@ -293,6 +298,7 @@ newPolygon(newPolygon(:,2) > sceneSize(4),2) = sceneSize(4);
 % take intersection with constraint
 [x,y] = polyxpoly(newPolygon(:,1),newPolygon(:,2),constraint(:,1),constraint(:,2));
 intersection = [x y];
+tmpInt = intersection;
 numInt = size(intersection,1);
 
 if (isempty(intersection) || numInt == 1)
@@ -319,6 +325,8 @@ else
     curInd = startInd;
     newPolygon2 = curPt;
     inConstraint = 0;
+    addedFOVPt = 0;
+    addedLine = 0;
     for i=1:size(newPolygon,1)
         
         curInd = mod(curInd + 1,size(newPolygon,1));
@@ -374,8 +382,17 @@ else
         elseif (inConstraint == 1)
             % add the tip of the FOV if it's inside the current polygon
             in = inpolygon(constraint(1,1),constraint(1,2),newPolygon(:,1),newPolygon(:,2));
-            if(in)
-                newPolygon2 = [newPolygon2; constraint(1,:)];
+            lastPt = newPolygon2(end,:);
+            if(in && ~addedFOVPt)
+                newPolygon2 = [newPolygon2; populateLine(makeLine,lastPt,constraint(1,:))];
+                addedFOVPt = 1;
+            end
+            if (~addedLine)
+                if(in)
+                    lastPt = constraint(1,:);
+                end
+                newPolygon2 = [newPolygon2; populateLine(makeLine,lastPt,intersection)];
+                addedLine = 1;
             end
         elseif (inConstraint == 2)
             % turn off the flag after we've passed the constraint a second time
@@ -394,20 +411,45 @@ else
         curPt = output(i,:);
         [in,on] = inpolygon(curPt(1),curPt(2),constraint(:,1),constraint(:,2));
         if(in && ~on)
-            badInd = [badInd i];
+            if (sum(ismember(tmpInt,curPt,'rows')) == 0)
+                badInd = [badInd i];
+            end
         end
     end
     output(badInd,:) = [];
 
 end
-
+% 
 % figure(3);
 % clf;
 % fill(output(:,1),output(:,2),'r','FaceAlpha',0.2); hold on;
 % axis([0 10 0 10]); hold on;
 % scatter(curPolygon(:,1),curPolygon(:,2)); hold on;
+% scatter(output(:,1),output(:,2)); hold on;
 % fill(constraint(:,1),constraint(:,2),'b','FaceAlpha',0.2);
-% pause;
+% 
+% disp('eh');
+
+end
+
+% populate line with points
+function [pts] = populateLine(makeLine,stPt,endPt)
+
+pts = [];
+xSamples = linspace(stPt(1),endPt(1),10);
+
+% vertical line check
+if (stPt(1) == endPt(1))
+    pts = [repmat(stPt(1),[10,1]) linspace(stPt(2),endPt(2),10)'];
+    % horizontal line check
+elseif (stPt(2) == endPt(2))
+    pts = [xSamples' repmat(stPt(2),[10,1])];
+else
+    for x=xSamples
+        y = makeLine(x,stPt(1),stPt(2),endPt(1),endPt(2));
+        pts = [pts; x y];
+    end
+end
 
 end
 

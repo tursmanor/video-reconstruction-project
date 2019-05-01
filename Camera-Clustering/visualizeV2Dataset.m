@@ -6,7 +6,8 @@ close all; clearvars;
 load 'datasetv2.mat'
 sceneSize = [-10 15 -10 15];
 makeLine = @(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
-filename = 'Results/datasetv2.gif';
+filename = 'Results/datasetv2-2.gif';
+viewSize = [-1 11 -1 11];
 
 fig = figure(1);
 camHandles1 = zeros(4,5);
@@ -15,33 +16,38 @@ prevCam1 = 0;
 for i = 1:size(dataset,2)
     
     subplot(2,3,1)
-    axis([0 10 0 10]); hold on;
+    axis(viewSize); hold on;
     title('Dataset');
+    plot([0 0 10 10 0],[0 10 10 0 0],'b'); hold on;
     [time,pCam1,cHand1] = plotDatasetFrame(dataset,i,camHandles1,prevCam1);
     prevCam1 = pCam1;
     camHandles1 = cHand1;
     axis('square');
     
     s2 = subplot(2,3,2);
-    axis([0 10 0 10]); hold on;
+    axis(viewSize); hold on;
+    plot([0 0 10 10 0],[0 10 10 0 0]); hold on;
     title('Camera 1 Area');
     plotArea(dataset,i,1,[0 10 0 10]);
     axis('square');
     
     s3 = subplot(2,3,3);
-    axis([0 10 0 10]); hold on;
+    axis(viewSize); hold on;
+    plot([0 0 10 10 0],[0 10 10 0 0]); hold on;
     title('Camera 2 Area');
     plotArea(dataset,i,2,[0 10 0 10]);
     axis('square');
     
     s4 = subplot(2,3,4);
-    axis([0 10 0 10]); hold on;
+    axis(viewSize); hold on;
+    plot([0 0 10 10 0],[0 10 10 0 0]); hold on;
     title('Camera 3 Area');
     plotArea(dataset,i,3,[0 10 0 10]);
     axis('square');
     
     s5 = subplot(2,3,5);
-    axis([0 10 0 10]); hold on;
+    axis(viewSize); hold on;
+    plot([0 0 10 10 0],[0 10 10 0 0]); hold on;
     title('Camera 4 Area');
     plotArea(dataset,i,4,[0 10 0 10]);
     axis('square');
