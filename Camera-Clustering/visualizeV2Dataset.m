@@ -6,11 +6,11 @@ close all; clearvars;
 load 'datasetv2.mat'
 sceneSize = [-10 15 -10 15];
 makeLine = @(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
-filename = 'Results/datasetv2-2.gif';
+filename = 'Results/datasetv2-4.gif';
 viewSize = [-1 11 -1 11];
 
 fig = figure(1);
-camHandles1 = zeros(4,5);
+camHandles1 = zeros(4,4);
 prevCam1 = 0;
 
 for i = 1:size(dataset,2)

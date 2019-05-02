@@ -3,7 +3,9 @@
 close all; clearvars;
 
 % TODO
-% debug
+
+global nope;
+nope = 0;
 
 %% Setup vars
 n = 10;
@@ -14,7 +16,7 @@ fAll = [1 1 1 1];
 frameCount = [30 120];
 
 % dataset structure
-dataset = struct('frame',0,'pos',zeros(2,3),'f',zeros(1,2),'gtCam',0,'A',{[] [] [] []});
+dataset = struct('frame',0,'pos',zeros(2,3),'f',zeros(1,2),'gtCam',0,'A',cell(1,k),'intA',cell(10,4));
 
 %% Init camera assignment
 % generate random gt camera assignment and framelength
@@ -153,10 +155,10 @@ for curShot = 1:n
     dataset(curShot).A = newA;
 end
 
-save('datasetv2','dataset');
-
+if (nope == 0)
+    save('datasetv2','dataset');
+end
 %% Helpers
-
 % returns true if current camera's FOV doesn't see any other active cameras
 function [out] = isGoodPosition(k,pos,f,sceneSize,activeCamPos,curCam)
 
@@ -275,6 +277,7 @@ end
 % expand each edge point of the previous polygon to make a new, bigger, and
 % better polygon
 function [output]= expandPolygon(curPolygon,radius,constraint,sceneSize)
+global nope;
 
 allPts = [];
 makeLine =@(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
@@ -305,6 +308,7 @@ if (isempty(intersection) || numInt == 1)
     output = newPolygon;
 elseif (numInt > 2)
     disp('nope')
+    nope = 1;
     output = newPolygon;
 else
     
@@ -522,13 +526,13 @@ end
 function [pos,f] = initCamPosition(cam,f,sWidth)
 
 if (cam == 1)
-    position = [1 6];
+    position = [1 4];
 elseif (cam == 2)
-    position = [4 4];
+    position = [4 2];
 elseif (cam == 3)
-    position = [6 4];
+    position = [6 2];
 else
-    position = [9 6];
+    position = [9 4];
 end
 
 pos = [(position(1) - sWidth/2) position(1) (position(1) + sWidth/2);
