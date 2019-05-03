@@ -5,8 +5,8 @@ function [] = visualizeTwoDatasets(dataset1, dataset2, filenameOut)
 
 filename = strcat('Results/',filenameOut,'.gif');
 
-camHandles1 = zeros(4,5);
-camHandles2 = zeros(4,5);
+camHandles1 = zeros(4,4);
+camHandles2 = zeros(4,4);
 prevCam1 = 0;
 prevCam2 = 0;
 n = size(dataset1,2);
