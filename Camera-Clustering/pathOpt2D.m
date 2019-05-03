@@ -50,7 +50,6 @@ options = optimoptions(@fmincon,'StepTolerance',1e-2,'OptimalityTolerance',1e-2,
 iterations = 40;
 outputs = zeros(gridN * 6 + 1,iterations);
 
-%tic
 parfor n=1:iterations
     % time, xpos, ypos, xvel, yvel, xacc, yacc
     x0 = [1;
@@ -64,14 +63,13 @@ parfor n=1:iterations
     [optimal,~,~,out] = fmincon(time_min, x0, A, b, Aeq, Beq, lb, ub, ...
         makeConstraints2D(params), options);
     
-    if (out.message(1:32) == 'Converged to an infeasible point')
+    if (isequal(out.message(2:5),'Conv'))
         optimal(1) = inf;
     end
     
     outputs(:,n) = optimal;
     outMsg(:,n) = out;
 end
-%toc
 
 [~,bestInd] = min(outputs(1,:));
 optimalOut = outputs(:,bestInd);

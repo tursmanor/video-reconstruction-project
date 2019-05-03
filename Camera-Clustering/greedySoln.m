@@ -1,247 +1,168 @@
 %% Greedy setup for clustering
 clearvars; close all;
 
-load Results/dataset-test2.mat
+load datasetv1.mat
 
 n = size(dataset,2);   
-out = struct('cam',0, ...
-             'pos',zeros(2,3), ...
-             'f',zeros(1,2));
+out = zeros(1,n);
+sceneSize = [0 10 0 10];
 
 % first two frames are cams 1 and 2
-out(1).cam = 1;
-[out(1).pos,out(1).f] = avgCamera(dataset(1).pos,dataset(1).f);
-
-out(2).cam = 2;
-[out(2).pos,out(2).f] = avgCamera(dataset(2).pos,dataset(2).f);
-
+out(1) = 1;
+out(2) = 2;
 cams = [1,2];   % active cameras in scene
 ind = [1,2];    % indices where previous cameras were found (camera 1 was
                 % last at index 1 of out, etc.)
-
 %% Cluster assignments
 for i=3:n
     
-    prevCam = out(i-1).cam;
-    
-    % get average position and focal length for camera
-    curData = dataset(i);
-    [avgP,avgF] = avgCamera(curData.pos,curData.f);
+    prevCam = out(i-1);
     
     % move all current cameras to new position 
-    %[opt,msg,bestCam] = trajOptOutput(prevCam,out,cams,avgP,ind);
-    [opt,bestCam] = lineOutput(prevCam,out,cams,avgP,ind,out(i-1).f);
+    [opt,bestCam] = trajOptOutput(prevCam,dataset,cams,ind,i);
+    %[opt,bestCam] = lineOutput(prevCam,dataset,cams,ind,i,sceneSize);
     
     % check versus some time threshold to determine whether or not to
     % assign shot to an existing camera or a new camera
     thresh = (dataset(i-1).frame / 30);
-    if (opt(1) <= thresh)
+    if (opt <= thresh)
         if (bestCam == 0), disp('BAD'),end
-        out(i).cam = bestCam;
+        out(i) = bestCam;
         ind(bestCam) = i;
     else
         cams = [cams cams(end)+1];
         ind = [ind i];
-        out(i).cam = cams(end);   
+        out(i) = cams(end);   
     end
-    
-    out(i).pos = avgP;
-    out(i).f = avgF;
-    
 end
 
-%save('clustering-radius-test','out');
+% make full dataset with new output labeling
+algoOut = dataset;
+for i=1:n
+    algoOut(i).gtCam = out(i);
+end
+dataset = algoOut;
 
-%% Quantify results
-algoOut = vertcat(out.cam);
-gtOut = vertcat(dataset.gtCam); 
-accuracy = sum(algoOut == gtOut) / n
+save('greedyV1Traj','dataset');
 
 %% Helpers
 
 % trajectory optimization
-function [opt,msg,bestCam] = trajOptOutput(prevCam,out,cams,avgP,ind)
-
+function [opt,bestCam] = trajOptOutput(prevCam,dataset,cams,ind,curShot)
 opt = inf;
 bestCam = 0;
 for j=cams
     
     if (j == prevCam)
         continue;
-    else
-        
-        constrPos = out(ind(prevCam)).pos;
-        constrF = out(ind(prevCam)).f;
-        constr = [constrPos(:,3)'; constrF; constrPos(:,1)'];    
-        [curOpt,msg,~] = pathOpt2D(out(ind(j)).pos(:,2)',avgP(:,2)',constr);
-               
+    else    
+        constrPos = dataset(ind(prevCam)).pos;
+        constrF = dataset(ind(prevCam)).f;
+        constr = [constrPos(:,3)'; constrF; constrPos(:,1)'];
+        curPos = dataset(curShot).pos;
+        [curOpt,~,pos] = pathOpt2D(dataset(ind(j)).pos(:,2)',curPos(:,2)',constr);           
     end
     
-    if ((curOpt(1) < opt(1)) && strcmp(msg.message(2:6),'Local'))
-        opt = curOpt;
-        bestCam = j;
-    end
-end
-
-end
-
-% straight line distance
-function [opt,bestCam] = lineOutput(prevCam,out,cams,avgP,ind,f)
-
-opt = inf;
-bestCam = 0;
-for j=cams
-    
-    if (j == prevCam)
-        continue;
+    % calculate aggregate distance travelled, assuming d = vt, w/ v = 1
+     time = curOpt(1);
+    if (time == inf)
+        d = inf;
     else
-        
-        conPos = out(ind(prevCam)).pos;
-        conPos = [conPos(:,1)' conPos(:,2)' conPos(:,3)'];
-        curPos = [avgP(:,1)' avgP(:,2)' avgP(:,3)'];
-        prevPos = out(ind(j)).pos;
-        prevPos = [prevPos(:,1)' prevPos(:,2)' prevPos(:,3)'];
-        
-        % set up line intersection as a system of linear equations
-        aVal = @(x1,x2,y1,y2) -(x2 - x1)/(y2 - y1);
-        bVal = @(x1,x2,y1,y2) (-y1 * ((x2-x1)/(y2-y1))) + x1;
-        slope = @(x1,x2,y1,y2) (y2 - y1)/(x2 - x1);
-        
-        aValPath = aVal(prevPos(3),curPos(3),prevPos(4),curPos(4));
-        bValPath = bVal(prevPos(3),curPos(3),prevPos(4),curPos(4));
-        pathSlope = slope(prevPos(3),curPos(3),prevPos(4),curPos(4));
-        
-        aValLeft = aVal(conPos(5),f(1),conPos(6),f(2));
-        bValLeft = bVal(conPos(5),f(1),conPos(6),f(2));
-        aValRight = aVal(conPos(1),f(1),conPos(2),f(2));
-        bValRight = bVal(conPos(1),f(1),conPos(2),f(2));
-        
-        ALeft =  [1 aValLeft; 1 aValPath];
-        ARight = [1 aValRight; 1 aValPath];
-        bLeft =  [bValLeft; bValPath];
-        bRight = [bValRight; bValPath];
-        
-        leftIntersect = ALeft\bLeft;
-        rightIntersect = ARight\bRight;
-        
-        % check if intersection occurs
-        if (~testIntersectionBounds(leftIntersect,pathSlope,f,curPos(3:4),prevPos(3:4)) || ...
-            ~testIntersectionBounds(rightIntersect,pathSlope,f,curPos(3:4),prevPos(3:4)))
-            continue;
-        else
-            % using d/v = t, where v is one m/s
-            d = norm(prevPos(3:4) - curPos(3:4));
+        d = 0;
+        for i=1:(size(pos,1)-1)
+            d = d + norm(pos(i+1,:) - pos(i,:));
         end
-        
     end
-        
+    
     if (d < opt)
         opt = d;
         bestCam = j;
     end
+end
+end
+
+% straight line distance
+function [opt,bestCam] = lineOutput(prevCam,dataset,cams,ind,curShot,sceneSize)
+
+opt = inf;
+bestCam = 0;
+for j=cams
     
-end
-
-end
-
-% returns 0 if the intersection happens in a constraint region, 1 if not
-function [valid] = testIntersectionBounds(pt, pSlope, f, pEnd,pBeg)
-
-% infinity check-- means we have parallel lines
-% bounds check-- only care if intersection occurs in our scene
-if ((pt(2) == inf) || pt(2) > 10)
-    valid = true;
-    return;
-end
-
-% check if path is going in the pos or neg x direction
-if (pBeg(1) < pEnd(1))
-    right = true;
-else
-    right = false;
-end
-
-% intersection point is above the start of the constraint triangle
-if (pt(2) > f(2))
-    
-    % positive slope
-    if(pSlope > 0)
-        
-        % path is pointing right
-        if(right)
-            
-            % point of intersection is larger in x and y than path end
-            if(pt(1) > pEnd(1) && pt(2) > pEnd(2))
-                valid = true;
-            else
-                valid = false;
-            end
-            
-            % path is pointing left
-        else
-            
-            % point of intersection is smaller in x and y than path end
-            if(pt(1) < pEnd(1) && pt(2) < pEnd(2))
-                valid = true;
-            else
-                valid = false;
-            end
-            
-        end
-        
-        % negative slope
-    elseif (pSlope < 0)
-        
-        % path is pointing right
-        if(right)
-            
-            % point of intersection is larger in x and smaller in y than
-            % path end
-            if(pt(1) > pEnd(1) && pt(2) < pEnd(2))
-                valid = true;
-            else
-                valid = false;
-            end
-            
-            % path is pointing left
-        else
-            
-            % point of intersection is smaller in x and bigger in y than
-            % path end
-            if(pt(1) < pEnd(1) && pt(2) > pEnd(2))
-                valid = true;
-            else
-                valid = false;
-            end
-        end
-        
-        % straight line
+    if (j == prevCam)
+        continue;
     else
         
-        % path is pointing right
-        if(right)
+        startPos = dataset(ind(j)).pos(:,2)';
+        goalPos = dataset(curShot).pos(:,2)';
+        unitVec = (goalPos - startPos) / norm(goalPos - startPos);
+        
+        curTime = dataset(curShot-1).frame / 30;
+        
+        % get current constraint as a polygon
+        constr = makeConstraint(dataset(curShot-1).pos,dataset(curShot-1).f,sceneSize);
             
-            % point of intersection larger in x than path end
-            if (pt(1) > pEnd(1))
-                valid = true;
+        % get endpoint of straight line path for current shot
+        tmpEnd = startPos + (curTime * unitVec);
+
+        % does it intersect a constraint
+        [x,y] = polyxpoly([startPos(1) tmpEnd(1)],[startPos(2) tmpEnd(2)],constr(:,1),constr(:,2));
+        intersection = [x y];
+        
+        if (isempty(intersection))
+            % cap at end goal
+            if (norm(tmpEnd - startPos) > norm(goalPos - startPos))
+                tmpEnd = goalPos;
+                d = norm(goalPos - startPos);
+                disp('Made it to goal');
             else
-                valid = false;
+                d = inf;
             end
-            
-            % path is pointing left
         else
-            
-            % point of intersection smaller in x than path end
-            if (pt(1) < pEnd(1))
-                valid = true;
-            else
-                valid = false;
-            end
+            disp('Intersected constraint');
+            d = inf;
         end
     end
     
-else
-    valid = true;
+    if (d < opt) && (isequal(tmpEnd,goalPos))
+        opt = d;
+        bestCam = j;
+    end
 end
+end
+
+% draw triangle to represent the FOV of the constraint camera
+function [pts] = makeConstraint(pos,f,sceneSize)
+
+pts = zeros(4,2);
+pts(1,:) = f;
+
+% get intersection with edge of scene
+constraints = [pos(:,3)'; f; pos(:,1)'];
+[~,slopeL,~,lLine,rLine] = makeLines(constraints);
+
+if (slopeL > 0)
+    boundX1 = [sceneSize(2)+10 sceneSize(2)+10];
+    boundY1 = [sceneSize(3) sceneSize(4)+10000];
+    boundX2 = [sceneSize(1)-10 sceneSize(1)-10];
+    boundY2 = [sceneSize(3) sceneSize(4)+10000];
+else
+    boundX1 = [sceneSize(1)-10 sceneSize(1)-10];
+    boundY1 = [sceneSize(3) sceneSize(4)+10000];
+    boundX2 = [sceneSize(2)+10 sceneSize(2)+10];
+    boundY2 = [sceneSize(3) sceneSize(4)+10000];
+end
+
+[x1,y1] = polyxpoly([pos(1,3) boundX1(1)],[pos(2,3) lLine(boundX1(1))],boundX1,boundY1);
+[x2,y2] = polyxpoly([pos(1,1) boundX2(1)],[pos(2,1) rLine(boundX2(1))],boundX2,boundY2);
+
+% debugging
+if (isempty(x1) || isempty(x2))
+    disp('error in makeConstraint');
+    return;
+end
+
+pts(2,:) = [x1 y1];
+pts(3,:) = [x2 y2];
+pts(4,:) = f;
 
 end

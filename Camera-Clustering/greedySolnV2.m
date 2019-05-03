@@ -7,6 +7,7 @@ load datasetv2.mat
 n = size(dataset,2);
 out = zeros(1,n);
 sceneSize = [0 10 0 10];
+badOutput = 0;
 
 % first two frames are cams 1 and 2
 out(1) = 1;
@@ -22,9 +23,9 @@ for i=3:n
     prevCam = out(i-1);
     
     % move all current cameras to new position
-    %[opt,msg,bestCam] = trajOptOutput(prevCam,out,cams,avgP,ind);
+    %[opt,msg,bestCam] = piecewiseLineOutput(prevCam,out,cams,avgP,ind);
     [opt,bestCam] = lineOutput(prevCam,cams,ind,dataset,i,sceneSize);
-    
+        
     % check versus some time threshold to determine whether or not to
     % assign shot to an existing camera or a new camera
     if (opt(1) ~= inf)
@@ -36,13 +37,40 @@ for i=3:n
         ind = [ind i];
         out(i) = cams(end);
     end
+    
+    % check that nothing is in the new cam's FOV
+    constr = makeConstraint(dataset(i).pos,dataset(i).f,sceneSize);
+    in = 0;
+    for j=1:size(ind,2)
+        if (j == out(i))
+            continue;
+        end
+       curPt = dataset(ind(j)).pos(:,2)';
+       in = in + inpolygon(curPt(1),curPt(2),constr(:,1),constr(:,2));       
+    end
+    
+    if (in ~= 0)
+       disp('Sequence invalid, camera in new FOV');
+       badOutput = 1;
+       break;
+    end
+    
 end
 
-%save('clustering-radius-test','out');
+% make full dataset with new output labeling
+algoOut = dataset;
+for i=1:n
+    algoOut(i).gtCam = out(i);
+end
+dataset = algoOut;
+
+if (badOutput == 0)
+    save('greedyV2','dataset');
+end
 
 %% Helpers
 % trajectory optimization
-function [opt,msg,bestCam] = trajOptOutput(prevCam,out,cams,avgP,ind)
+function [opt,msg,bestCam] = piecewiseLineOutput(prevCam,out,cams,avgP,ind)
 
 opt = inf;
 bestCam = 0;
@@ -72,9 +100,6 @@ function [opt,bestCam] = lineOutput(prevCam,cams,ind,dataset,curShot,sceneSize)
 
 opt = inf;
 bestCam = 0;
-
-curPos = dataset(curShot).pos;
-curPos = [curPos(:,1)' curPos(:,2)' curPos(:,3)'];
 
 for j=cams
     

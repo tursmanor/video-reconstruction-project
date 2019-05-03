@@ -4,14 +4,14 @@
 
 close all; clearvars;
 load 'datasetv2.mat'
-%dataset = datasets(46).GT;
 sceneSize = [-10 15 -10 15];
 makeLine = @(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
 filename = 'Results/datasetv2.gif';
 
 fig = figure(1);
 axis([0 10 0 10]); hold on;
-camHandles = zeros(4,5);
+numCams = max(vertcat(dataset.gtCam));
+camHandles = zeros(numCams,4);
 prevCam = 0;
 
 for i = 1:size(dataset,2)
@@ -26,8 +26,10 @@ for i = 1:size(dataset,2)
         color = 'red';
     elseif (curCam == 3)
         color = 'green';
-    else
+    elseif (curCam == 4)
         color = 'magenta';
+    else
+        color = 'black';
     end
     
     % erase camera's previous location

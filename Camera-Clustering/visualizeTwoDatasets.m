@@ -18,6 +18,7 @@ for i=1:n
     
     subplot(1,2,1);
     axis([0 10 0 10]); hold on;
+    axis('square');
     title('GT Dataset');
     [t1,pCam1,cHand1] = plotDatasetFrame(dataset1,i,camHandles1,prevCam1);
     prevCam1 = pCam1;
@@ -25,6 +26,7 @@ for i=1:n
     
     subplot(1,2,2);
     axis([0 10 0 10]); hold on;
+    axis('square')
     title('Dynamic Tree Best Solution');
     [~,pCam2,cHand2] = plotDatasetFrame(dataset2,i,camHandles2,prevCam2);
     prevCam2 = pCam2;

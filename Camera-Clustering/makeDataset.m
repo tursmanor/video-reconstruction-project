@@ -1,4 +1,3 @@
-function dataset = makeDataset(frameCount)%,pNoise)
 %% Dataset creation
 % n shots, between 30 and 150 frames per second (1-5 seconds)
 % each frame has a camera position (two 2d points) and a focal length (one
@@ -8,17 +7,18 @@ function dataset = makeDataset(frameCount)%,pNoise)
 % camera can only move within circle rad 4 between frames
 % cameras must all be pointing at the set, aka the top line of the scene
 % hard code initial positions of all 4 cameras to spread them out
+close all; clearvars;
 
 %% Setup
 n = 10;
 k = 4;
 sceneSize = [0 10; 0 10];
 sensorWidth = 2;
+frameCount = [30 120];
 fAll = [1 1 1 1]; % focal lengths of all four cameras
 
 % dataset structure
-dataset = struct('frame',0,'pos',zeros(frameCount(1) * 2,3), ...
-    'f',zeros(frameCount(1),2),'gtCam',0);
+dataset = struct('frame',0,'pos',zeros(2,3),'f',zeros(1,2),'gtCam',0);
 
 %% generate random gt camera assignment first
 prevCam = 0;
@@ -80,7 +80,6 @@ for curShot = 1:n
                     end
                     
                     indx = getPrevCamShot(cam,curShot,dataset);
-                    
                     % current cam is on the set
                     if (indx ~= 0)
                         [camPos,camF] = avgCamera(dataset(indx).pos,dataset(indx).f);
@@ -105,20 +104,18 @@ for curShot = 1:n
                 end
                 
                 dataset(curShot).gtCam = newGtCam;
-            end
-            
+            end   
         else
             break;
-        end
-        
+        end  
     end
     
     % testing
     tmp = getPrevCamShot(dataset(curShot).gtCam,curShot,dataset);
     if (tmp ~= 0)
         [tmpPos,~] = avgCamera(dataset(tmp).pos,dataset(tmp).f);
-        if (norm(tmpPos(1:2,2) - pos(1:2,2))> dataset(curShot-1).frame/30)
-            disp('BAD');
+        if (norm(tmpPos(1:2,2) - pos(1:2,2)) > dataset(curShot-1).frame/30)
+            disp('BADMain');
         end
     end
     
@@ -148,16 +145,6 @@ for curShot = 1:n
    newGT = assignments(2,indx); 
    dataset(curShot).gtCam = newGT;
 end
-
-% for curShot = 1:n
-%     curP = dataset(curShot).pos;
-%     curF = dataset(curShot).f;
-%     
-%     [pos,f] = addNoise(curP,curF,pNoise);
-%     
-%     dataset(curShot).pos = pos;
-%     dataset(curShot).f = f;
-% end
 
 save('datasetv1','dataset');
 
@@ -220,7 +207,6 @@ function [pos,f] = makeCameraPosition(prevInd,radius,sceneSize,dataset,fAll,sens
 % generate a new random position within radius r of the previous position
 % if prevInd is 0, generate a position with no constraints
 % assumes camera is still with some jiggling for each shot
-
 if (prevInd == 0)
     % camera has not shown up in scene before
     if (cam == 1)
@@ -233,7 +219,7 @@ if (prevInd == 0)
         position = [9 4];
     end
 else
-    [prevPos,~] = avgCamera(dataset(prevInd).pos,dataset(prevInd).f);
+    prevPos = dataset(prevInd).pos;
     [x,y] = randPtInCircle(prevPos(1,2),prevPos(2,2),radius);
     
     % bounds checking
@@ -245,45 +231,15 @@ else
     position = [x,y];
 end
 
-camPos = [(position(1) - sensorWidth/2) position(1) (position(1) + sensorWidth/2);
+pos = [(position(1) - sensorWidth/2) position(1) (position(1) + sensorWidth/2);
     position(2) position(2) position(2)];
 f = [position(1) position(2) + fAll(cam)];
-
-
-if (prevInd ~= 0)
-if (norm([prevPos(1,2) prevPos(2,2)] - [position(1) position(2)])> dataset(curShot-1).frame/30)
-    disp('BAD');
-end
-end
 
 % randomly rotate before adding noise, if the camera has appeared before
 % only
 if (prevInd ~= 0)
-    [camPosRot, fRot] = moveCamera(camPos,f,[0;0]);
-    camMatrix = repmat(camPosRot,frameCount,1);
-    fMatrix = repmat(fRot',frameCount,1);
-else
-    camMatrix = repmat(camPos,frameCount,1);
-    fMatrix = repmat(f,frameCount,1);
+    [camPosRot, fRot] = moveCamera(pos,f,[0;0]);
+    pos = camPosRot;
+    f = fRot';
 end
-
-pos = camMatrix;
-f = fMatrix;
-
-end
-
-function [pos,f] = addNoise(pos,f,pNoise)
-        
-    % 0.01 works
-    range = [-pNoise pNoise];
-    rangeF = [-.2 .2];
-    noise = range(1) + (range(2) - range(1)) * rand(size(pos));
-    noiseF = rangeF(1) + (rangeF(2) - rangeF(1)) * rand(size(f));
-    
-    % add noise
-    pos = pos + noise;
-    f = f + noiseF;
-    
-end
-
 end

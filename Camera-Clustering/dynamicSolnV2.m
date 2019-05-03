@@ -234,6 +234,30 @@ if(indx ~= 0)
         cost = -inf;
     end
 end
+
+% check that nothing is in the new cam's FOV
+constr = makeConstraint(positions(curSize,:),fs(curSize,:),[0 10 0 10]);
+in = 0;
+numCam = max(sequence);
+indices = zeros(1,numCam);
+for j=1:numCam
+    tmpInd = find(sequence == j);
+    indices(j) = tmpInd(end);
+end
+
+for j=1:numCam
+    if (j == curCam)
+        continue;
+    end
+    curPt = positions(indices(j),:);
+    curPt = curPt(3:4);
+    in = in + inpolygon(curPt(1),curPt(2),constr(:,1),constr(:,2));
+end
+
+if (in ~= 0)
+    disp('Sequence invalid, camera in new FOV');
+    cost = -inf;
+end
 end
 
 % draw triangle to represent the FOV of the constraint camera
@@ -302,7 +326,7 @@ elseif (size(curSeq,2) == n)
     costs = [costs curCost];
     seqs = [seqs; curSeq];
     % testing
-    size(costs)
+    %size(costs)
     
     % recursive case
 else
