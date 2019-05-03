@@ -16,7 +16,7 @@ fAll = [1 1 1 1];
 frameCount = [30 120];
 
 % dataset structure
-dataset = struct('frame',0,'pos',zeros(2,3),'f',zeros(1,2),'gtCam',0,'A',cell(1,k),'intA',cell(10,4));
+dataset = struct('frame',0,'pos',zeros(2,3),'f',zeros(1,2),'gtCam',0,'A',cell(1,k));%,'intA',cell(10,4));
 
 %% Init camera assignment
 % generate random gt camera assignment and framelength
@@ -64,11 +64,11 @@ for curShot = 2:n
     % get current constraint
     curConstraint = makeConstraint(dataset(curShot-1).pos, ...
         dataset(curShot-1).f, sceneSize);
-      
+    
     % For each (camera != previous camera) that is in the scene, expand its
     % corresponding area based on the previous framecount
-    for i=cameras(cameras~=prevCam)  
-        ind = getPrevCamShot(i,curShot,dataset);   
+    for i=cameras(cameras~=prevCam)
+        ind = getPrevCamShot(i,curShot,dataset);
         if (ind ~= 0)
             radius = dataset(prevCam).frame / 30;
             areas{i} = expandPolygon(areas{i},radius,curConstraint,sceneSize);
@@ -85,7 +85,7 @@ for curShot = 2:n
     [activeCamPos] = activeCameras(k,dataset,curShot);
     
     % check if any existing camera is in the newCam's FOV
-    goodPos = isGoodPosition(k,pos,f,sceneSize,activeCamPos,curCam); 
+    goodPos = isGoodPosition(k,pos,f,sceneSize,activeCamPos,curCam);
     while (goodPos == 0)
         disp('Bad position blocked.');
         
@@ -97,28 +97,28 @@ for curShot = 2:n
         
         dataset(curShot).gtCam = newCam;
         [pos,f,areas] = getPositionWrapper(newCam,curShot,dataset,fAll,sensorWidth,areas,sceneSize);
-        goodPos = isGoodPosition(k,pos,f,sceneSize,activeCamPos,newCam);    
+        goodPos = isGoodPosition(k,pos,f,sceneSize,activeCamPos,newCam);
     end
-     
+    
     dataset(curShot).pos = pos;
     dataset(curShot).f = f;
     dataset(curShot).A = areas;
     
     % visualize results for current frame for debugging
-%     if(curShot > 2)
-%         color = ['r' 'b' 'g' 'c'];
-%         figure(1);
-%         clf;
-%         axis(sceneSize); hold on;
-%         fill(curConstraint(:,1),curConstraint(:,2),color(prevCam),'FaceAlpha',0.6); hold on;
-%         for i=1:4
-%             if (~isempty(areas{i}))
-%                 pts = areas{i};
-%                 fill(pts(:,1),pts(:,2),color(i),'FaceAlpha',0.3); hold on;
-%             end
-%         end
-%         pause;
-%     end
+    %     if(curShot > 2)
+    %         color = ['r' 'b' 'g' 'c'];
+    %         figure(1);
+    %         clf;
+    %         axis(sceneSize); hold on;
+    %         fill(curConstraint(:,1),curConstraint(:,2),color(prevCam),'FaceAlpha',0.6); hold on;
+    %         for i=1:4
+    %             if (~isempty(areas{i}))
+    %                 pts = areas{i};
+    %                 fill(pts(:,1),pts(:,2),color(i),'FaceAlpha',0.3); hold on;
+    %             end
+    %         end
+    %         pause;
+    %     end
 end
 
 %% Refactor numbering
@@ -140,23 +140,23 @@ end
 
 % assign to dataset
 for curShot = 1:n
-   curGT = dataset(curShot).gtCam;
-   indx = find(assignments(1,:) == curGT);
-   newGT = assignments(2,indx);
-   dataset(curShot).gtCam = newGT;
+    curGT = dataset(curShot).gtCam;
+    indx = find(assignments(1,:) == curGT);
+    newGT = assignments(2,indx);
+    dataset(curShot).gtCam = newGT;
 end
 
-for curShot = 1:n 
+for curShot = 1:n
     curA = dataset(curShot).A;
-    newA = cell(1,numCams); 
+    newA = cell(1,numCams);
     for i=1:numCams
         newA(assignments(2,i)) = curA(assignments(1,i));
-    end  
+    end
     dataset(curShot).A = newA;
 end
 
 if (nope == 0)
-    save('datasetv2','dataset');
+    save('datasetv2-2','dataset');
 end
 %% Helpers
 % returns true if current camera's FOV doesn't see any other active cameras
@@ -209,13 +209,31 @@ end
 
 % wrapper for position generation
 function [pos,f,areas] = getPositionWrapper(curCam,curShot,dataset,fAll,sensorWidth,areas,sceneSize)
-    ind = getPrevCamShot(curCam,curShot,dataset);
-    if (ind == 0)
-        [pos,f] = initCamPosition(curCam,fAll,sensorWidth);
-        areas{curCam} = pos(:,2)';
-    else
+ind = getPrevCamShot(curCam,curShot,dataset);
+
+% get a position
+if (ind == 0)
+    [pos,f] = initCamPosition(curCam,fAll,sensorWidth);
+    areas{curCam} = pos(:,2)';
+else
+    %loop intil all points for the camera lie within the polygon
+    curArea = areas{curCam};
+    goodPoints = 0;
+    while(goodPoints ~= 1)
+        
         [pos,f] = makeCamPosition(curCam,fAll,sensorWidth,areas,sceneSize);
+        
+        in = 0;
+        for i=1:3
+            in = in + inpolygon(pos(1,i),pos(2,i),curArea(:,1),curArea(:,2));
+        end
+        in = in + inpolygon(f(1),f(2),curArea(:,1),curArea(:,2));
+        
+        if (in == 4)
+            goodPoints = 1;
+        end
     end
+end
 end
 
 % draw triangle to represent the FOV of the constraint camera
@@ -283,10 +301,10 @@ allPts = [];
 makeLine =@(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
 
 % draw a new circle around each existing polygon pt
-for i = 1:size(curPolygon,1)   
+for i = 1:size(curPolygon,1)
     startPt = curPolygon(i,:);
     pts = samplePoints(startPt,radius);
-    allPts = [allPts; pts];   
+    allPts = [allPts; pts];
 end
 
 boundInd = boundary(allPts(:,1),allPts(:,2),0.1);
@@ -375,7 +393,7 @@ else
                     newPolygon2 = [newPolygon2; curIntPt];
                     intersection(j,:) = [];
                     numInt = numInt - 1;
-                    break;      
+                    break;
                 end
             end
         end
@@ -407,8 +425,8 @@ else
         curPt = nextPt;
     end
     
-    output = newPolygon2;  
-
+    output = newPolygon2;
+    
     badInd = [];
     % pruning stray edges
     for i=1:size(output,1)
@@ -421,9 +439,9 @@ else
         end
     end
     output(badInd,:) = [];
-
+    
 end
-% 
+%
 % figure(3);
 % clf;
 % fill(output(:,1),output(:,2),'r','FaceAlpha',0.2); hold on;
@@ -431,7 +449,7 @@ end
 % scatter(curPolygon(:,1),curPolygon(:,2)); hold on;
 % scatter(output(:,1),output(:,2)); hold on;
 % fill(constraint(:,1),constraint(:,2),'b','FaceAlpha',0.2);
-% 
+%
 % disp('eh');
 
 end

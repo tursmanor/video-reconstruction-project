@@ -1,4 +1,4 @@
-function dataset = makeDataset(frameCount,pNoise)
+function dataset = makeDataset(frameCount)%,pNoise)
 %% Dataset creation
 % n shots, between 30 and 150 frames per second (1-5 seconds)
 % each frame has a camera position (two 2d points) and a focal length (one
@@ -8,21 +8,19 @@ function dataset = makeDataset(frameCount,pNoise)
 % camera can only move within circle rad 4 between frames
 % cameras must all be pointing at the set, aka the top line of the scene
 % hard code initial positions of all 4 cameras to spread them out
+
+%% Setup
 n = 10;
-vMax = 1;
-aMax = 1;
 k = 4;
 sceneSize = [0 10; 0 10];
 sensorWidth = 2;
 fAll = [1 1 1 1]; % focal lengths of all four cameras
-camPositions = zeros(k*2,3); % keep track of where cameras are in space
-makeLine =@(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
 
 % dataset structure
 dataset = struct('frame',0,'pos',zeros(frameCount(1) * 2,3), ...
     'f',zeros(frameCount(1),2),'gtCam',0);
 
-% generate random gt camera assignment first
+%% generate random gt camera assignment first
 prevCam = 0;
 for curShot = 1:n
     cam = randi([1 k]);
@@ -36,7 +34,7 @@ for curShot = 1:n
     prevCam = cam;
 end
 
-% calculate possible positions based on radius of allowed movement
+%% calculate possible positions based on radius of allowed movement
 for curShot = 1:n
     
     % determine number of frames in this shot
@@ -47,7 +45,7 @@ for curShot = 1:n
     
     % set radius based on previous shot length
     if (curShot > 1)
-       radius = calcRadius(dataset(curShot-1).frame / 30);
+       radius = dataset(curShot-1).frame / 30;
     else
         radius = 0;
     end
@@ -76,7 +74,6 @@ for curShot = 1:n
             % fov
             if (~badPosition)
                 blocked = 0;
-                
                 for cam = 1:k
                     if (cam == curCam)
                         continue;
@@ -120,17 +117,16 @@ for curShot = 1:n
     tmp = getPrevCamShot(dataset(curShot).gtCam,curShot,dataset);
     if (tmp ~= 0)
         [tmpPos,~] = avgCamera(dataset(tmp).pos,dataset(tmp).f);
-        if (norm(tmpPos(1:2,2) - pos(1:2,2))> calcRadius(dataset(curShot-1).frame/30))
+        if (norm(tmpPos(1:2,2) - pos(1:2,2))> dataset(curShot-1).frame/30)
             disp('BAD');
         end
     end
-    
     
     dataset(curShot).pos = pos;
     dataset(curShot).f = f;
 end
 
-% refactor camera numbering so that it aligns with clustering expectations
+%% refactor camera numbering so that it aligns with clustering expectations
 assignments = zeros(2,k);
 assignments(1,1) = dataset(1).gtCam;
 assignments(2,1) = 1;
@@ -153,26 +149,19 @@ for curShot = 1:n
    dataset(curShot).gtCam = newGT;
 end
 
-for curShot = 1:n
-    curP = dataset(curShot).pos;
-    curF = dataset(curShot).f;
-    
-    [pos,f] = addNoise(curP,curF,pNoise);
-    
-    dataset(curShot).pos = pos;
-    dataset(curShot).f = f;
-end
+% for curShot = 1:n
+%     curP = dataset(curShot).pos;
+%     curF = dataset(curShot).f;
+%     
+%     [pos,f] = addNoise(curP,curF,pNoise);
+%     
+%     dataset(curShot).pos = pos;
+%     dataset(curShot).f = f;
+% end
 
-%save('dataset-radius-test','dataset');
+save('datasetv1','dataset');
 
-function [radius] = calcRadius(time)
-    
-x =[-0.0162    0.1837   -0.0038   -0.07];
-radius = x(1)*time^3 + x(2)*time^2 + x(3)*time + x(4);
-if radius < 0, radius = 0; end
-
-end
-
+%% Helpers
 function [out] = isBadPosition(curPos, constrP, constrF)
 % check if the current position is within the constraint
 % if so, returns true, otherwise returns false
@@ -235,13 +224,13 @@ function [pos,f] = makeCameraPosition(prevInd,radius,sceneSize,dataset,fAll,sens
 if (prevInd == 0)
     % camera has not shown up in scene before
     if (cam == 1)
-        position = [1 6];
+        position = [1 4];
     elseif (cam == 2)
-        position = [4 4];
+        position = [4 2];
     elseif (cam == 3)
-        position = [6 4];
+        position = [6 2];
     else
-        position = [9 6];
+        position = [9 4];
     end
 else
     [prevPos,~] = avgCamera(dataset(prevInd).pos,dataset(prevInd).f);
@@ -262,7 +251,7 @@ f = [position(1) position(2) + fAll(cam)];
 
 
 if (prevInd ~= 0)
-if (norm([prevPos(1,2) prevPos(2,2)] - [position(1) position(2)])> calcRadius(dataset(curShot-1).frame/30))
+if (norm([prevPos(1,2) prevPos(2,2)] - [position(1) position(2)])> dataset(curShot-1).frame/30)
     disp('BAD');
 end
 end
