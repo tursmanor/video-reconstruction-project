@@ -2,7 +2,7 @@
 close all; clearvars;
 
 %% Setup
-load datasetv2.mat
+load datasetv2-2.mat
 
 n = size(dataset,2);
 out = zeros(1,n);
@@ -23,8 +23,9 @@ for i=3:n
     prevCam = out(i-1);
     
     % move all current cameras to new position
-    %[opt,msg,bestCam] = piecewiseLineOutput(prevCam,out,cams,avgP,ind);
-    [opt,bestCam] = lineOutput(prevCam,cams,ind,dataset,i,sceneSize);
+    [opt,bestCam] = rrtOutput(prevCam,cams,ind,dataset,i,sceneSize);
+    %[opt,bestCam] = piecewiseLineOutput(prevCam,cams,ind,dataset,i,sceneSize);
+    %[opt,bestCam] = lineOutput(prevCam,cams,ind,dataset,i,sceneSize);
         
     % check versus some time threshold to determine whether or not to
     % assign shot to an existing camera or a new camera
@@ -65,12 +66,12 @@ end
 dataset = algoOut;
 
 if (badOutput == 0)
-    save('greedyV2','dataset');
+    save('greedyV2RRT','dataset');
 end
 
 %% Helpers
-% trajectory optimization
-function [opt,msg,bestCam] = piecewiseLineOutput(prevCam,out,cams,avgP,ind)
+% rrt line distance
+function [opt,bestCam] = rrtOutput(prevCam,cams,ind,dataset,curShot,sceneSize)
 
 opt = inf;
 bestCam = 0;
@@ -80,19 +81,143 @@ for j=cams
         continue;
     else
         
-        constrPos = out(ind(prevCam)).pos;
-        constrF = out(ind(prevCam)).f;
-        constr = [constrPos(:,3)'; constrF; constrPos(:,1)'];
-        [curOpt,msg,~] = pathOpt2D(out(ind(j)).pos(:,2)',avgP(:,2)',constr);
+        % get number of shots camera j had to move in
+        % eg., for [1,2,_], 1 has 3-1-1 = 1 shot to move
+        numActiveShots = curShot - ind(j) - 1;
         
+        startPos = dataset(ind(j)).pos(:,2)';
+        goalPos = dataset(curShot).pos(:,2)';
+        curArea = startPos;
+        
+        paths = graph();
+        paths = addnode(paths,num2str(startPos));
+        maxPathLength = 0;
+
+        figure;
+        axis(sceneSize);
+        title(strcat('Number of shots to move in: ',num2str(numActiveShots))); hold on;
+        scatter(startPos(1),startPos(2),'b'); hold on;
+        scatter(goalPos(1),goalPos(2),'g','filled'); hold on;
+        
+        % increase area size based on number of active shots
+        for i=1:numActiveShots
+            
+            shot = ind(j) + i;
+            curTime = dataset(shot).frame / 30;
+            maxPathLength = maxPathLength + curTime;
+            
+            % get current constraint as a polygon
+            constr = makeConstraint(dataset(shot).pos,dataset(shot).f,sceneSize); 
+            
+            % add to path graph
+            curArea = expandPolygon(curArea,curTime,constr,sceneSize);   
+            
+            fill(constr(:,1),constr(:,2),'b','FaceAlpha',0.1); hold on;
+            fill(curArea(:,1),curArea(:,2),'r','FaceAlpha',0.1); hold on;
+            
+            % populate graph via RRT
+            paths = RRT(paths,100,0.8,sceneSize,constr,maxPathLength,goalPos);
+            
+            % don't keep going through active shots if we've already hit
+            % the goal
+            if (findnode(paths,num2str(goalPos)) ~= 0)
+                break;
+            end 
+        end
     end
     
-    if ((curOpt(1) < opt(1)) && strcmp(msg.message(2:6),'Local'))
-        opt = curOpt;
-        bestCam = j;
+    % if we reached the goal in time, get shortest path from start to goal
+    % of final graph
+    goalNodeID = findnode(paths,num2str(goalPos));
+    if(goalNodeID ~= 0)
+        goalEdges = outedges(paths,goalNodeID);
+        d = min(paths.Edges{goalEdges,'Weight'});
+    else
+        d = inf;
+    end
+
+    if (d < opt)
+       opt = d;
+       bestCam = j;
     end
 end
 
+end
+
+% piecewise line distance
+function [opt,bestCam] = piecewiseLineOutput(prevCam,cams,ind,dataset,curShot,sceneSize)
+
+opt = inf;
+bestCam = 0;
+for j=cams
+    
+    if (j == prevCam)
+        continue;
+    else
+        
+        % get number of shots camera j had to move in
+        % eg., for [1,2,_], 1 has 3-1-1 = 1 shot to move
+        numActiveShots = curShot - ind(j) - 1;
+        
+        startPos = dataset(ind(j)).pos(:,2)';
+        goalPos = dataset(curShot).pos(:,2)';
+        curArea = startPos;
+        
+        paths = graph();
+        paths = addnode(paths,num2str(startPos));
+
+        figure;
+        axis(sceneSize);
+        title(strcat('Number of shots to move in: ',num2str(numActiveShots))); hold on;
+        scatter(startPos(1),startPos(2),'b'); hold on;
+        scatter(goalPos(1),goalPos(2),'g','filled'); hold on;
+        
+        % increase area size based on number of active shots
+        for i=1:numActiveShots
+            
+            shot = ind(j) + i;
+            curTime = dataset(shot).frame / 30;
+            
+            % get current constraint as a polygon
+            constr = makeConstraint(dataset(shot).pos,dataset(shot).f,sceneSize); 
+            
+            % add to path graph
+            curArea = expandPolygon(curArea,curTime,constr,sceneSize);   
+            
+            fill(constr(:,1),constr(:,2),'b','FaceAlpha',0.1); hold on;
+            fill(curArea(:,1),curArea(:,2),'r','FaceAlpha',0.1); hold on;
+            
+            % if there is only one node in the graph, spread in a circle,
+            % otherwise populate as normal
+            curIn = inpolygon(goalPos(1),goalPos(2),curArea(:,1),curArea(:,2));
+            if((size(paths.Nodes,1) == 1) && ~curIn)
+                paths = initGraph(paths,curArea);
+            else
+                paths = populateGraph(paths,goalPos,curArea,curTime);
+            end
+            
+            % don't keep going through active shots if we've already hit
+            % the goal
+            if (curIn)
+                break;
+            end 
+        end
+    end
+    
+    % if we reached the goal in time, get shortest path from start to goal
+    % of final graph
+    if(findnode(paths,num2str(goalPos)) ~= 0)
+    [~,d] = shortestpath(paths,findnode(paths,num2str(startPos)), ...
+                         findnode(paths,num2str(goalPos)));
+    else
+        d = inf;
+    end
+
+    if (d < opt)
+       opt = d;
+       bestCam = j;
+    end
+end
 end
 
 % straight line distance
@@ -168,6 +293,69 @@ for j=cams
         bestCam = j;
         bestEnd = curEnd;
     end 
+end
+end
+
+% init graph spread
+function [paths] = initGraph(paths,curArea)
+    % add a ray from the center node to each vertex in the current area,
+    % like spokes
+    centerNode = paths.Nodes{1,'Name'};
+    centerNode = str2num(cell2mat(centerNode));  
+    for index = 1:size(curArea,1)       
+        curPt = curArea(index,:);
+        totalDist = norm(curPt - centerNode);
+        
+        % add node if it isn't already in the graph
+        if (findnode(paths,num2str(curPt)) == 0)
+            
+            paths = addnode(paths,num2str(curPt));
+            paths = addedge(paths,findnode(paths,num2str(centerNode)), ...
+                findnode(paths,num2str(curPt)),totalDist);
+            
+            scatter(curPt(1),curPt(2),'r'); hold on;
+            plot([curPt(1) centerNode(1)],[curPt(2) centerNode(2)]); hold on;
+        end
+    end
+end
+
+% add to graph if we are past the initial population
+function [pathsOut] = populateGraph(paths,goalPos,curArea,curTime)
+% iterate over the nodes of the graph, and all vertices at the edge of the
+% current area polygon. add edges to either the goal if it is within
+% the current area
+in = inpolygon(goalPos(1),goalPos(2),curArea(:,1),curArea(:,2));
+eps = 0.0001;
+pathsOut = paths;
+
+for i = 1:size(paths.Nodes,1)
+    
+    curNode = paths.Nodes{i,'Name'};
+    curNode = str2num(cell2mat(curNode));
+    
+    for j = 1:size(curArea,1)    
+        % check if goal is within current area
+        if(in)
+            newPt = goalPos;
+        else
+            newPt = curArea(j,:);
+        end
+        
+        % check if it's possible to travel to the new point in time
+        dist = norm(newPt - curNode);
+        if(dist <= (curTime + eps))
+            % add goal node if it isn't already in the graph
+            if (findnode(pathsOut,num2str(newPt)) == 0)
+                pathsOut = addnode(pathsOut,num2str(newPt));
+            end
+            
+            pathsOut = addedge(pathsOut,findnode(pathsOut,num2str(curNode)), ...
+                findnode(pathsOut,num2str(newPt)),dist);
+            
+            scatter(newPt(1),newPt(2),'r'); hold on;
+            plot([newPt(1) curNode(1)],[newPt(2) curNode(2)]); hold on;
+        end
+    end
 end
 end
 

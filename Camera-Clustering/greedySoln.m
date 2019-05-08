@@ -6,6 +6,7 @@ load datasetv1.mat
 n = size(dataset,2);   
 out = zeros(1,n);
 sceneSize = [0 10 0 10];
+badOutput = 0;
 
 % first two frames are cams 1 and 2
 out(1) = 1;
@@ -34,6 +35,24 @@ for i=3:n
         ind = [ind i];
         out(i) = cams(end);   
     end
+    
+    % check that nothing is in the new cam's FOV
+    constr = makeConstraint(dataset(i).pos,dataset(i).f,sceneSize);
+    in = 0;
+    for j=1:size(ind,2)
+        if (j == out(i))
+            continue;
+        end
+       curPt = dataset(ind(j)).pos(:,2)';
+       in = in + inpolygon(curPt(1),curPt(2),constr(:,1),constr(:,2));       
+    end
+    
+    if (in ~= 0)
+       disp('Sequence invalid, camera in new FOV');
+       badOutput = 1;
+       break;
+    end
+    
 end
 
 % make full dataset with new output labeling
@@ -43,7 +62,9 @@ for i=1:n
 end
 dataset = algoOut;
 
-save('greedyV1Traj','dataset');
+if (badOutput == 0)
+    save('greedyV1Traj','dataset');
+end
 
 %% Helpers
 

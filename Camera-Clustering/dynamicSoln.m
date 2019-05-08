@@ -250,6 +250,32 @@ end
 
 end
 
+% check that nothing is in the new cam's FOV
+function cost = checkFOV(sequence)
+global positions fs;
+
+shot = size(sequence,2);
+constr = makeConstraint(positions(shot,:),fs(shot,:),[0 10 0 10]);
+in = 0;
+
+% iterate through all active cameras, skipping the active FOV
+for j=1:max(sequence)
+    if (j == sequence(end))
+        continue;
+    end
+    currentIndex = find(sequence == j,1,'last');
+    curPt = positions(currentIndex,3:4);
+    in = in + inpolygon(curPt(1),curPt(2),constr(:,1),constr(:,2));
+end
+
+if (in ~= 0)
+    disp('Sequence invalid, camera in new FOV');
+    cost = -inf;
+else
+    cost = 0;
+end
+end
+
 % build a tree that keeps track of cost of each walk/sequence
 function [] = seqCost(curSeq,curCost,k,n,memo)
 
@@ -280,7 +306,8 @@ else
             nextCost = calcCostPair([curSeq i]);
         end
         
-        seqCost([curSeq i],curCost + nextCost,k,n,memo);
+        additionalCost = checkFOV([curSeq i]);
+        seqCost([curSeq i],curCost + nextCost + additionalCost,k,n,memo);
         
     end
 end

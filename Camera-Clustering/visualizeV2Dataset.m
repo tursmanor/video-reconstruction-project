@@ -3,10 +3,10 @@
 % by frame, visualize growing areas in subplots concurrently
 
 close all; clearvars;
-load 'datasetv2.mat'
+load 'datasetv2-2.mat'
 sceneSize = [-10 15 -10 15];
 makeLine = @(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
-filename = 'Results/datasetv2-4.gif';
+filename = 'Results/datasetv2-2.gif';
 viewSize = [-1 11 -1 11];
 
 fig = figure(1);

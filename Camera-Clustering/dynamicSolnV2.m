@@ -1,6 +1,6 @@
 %% Dynamic clustring for V2 dataset
 close all; clearvars;
-% clearAllMemoizedCaches
+clearAllMemoizedCaches
 
 %% Load data
 global positions shotLengths fs;
@@ -20,15 +20,18 @@ for i=1:n
 end
 
 %% Build tree
-global costs seqs memCost;
+global costs seqs memCost memCostRRT;
 seqs = [];
 costs = [];
 
-memCost = memoize(@calcCostPairTrajOptMem);
+memCostRRT = memoize(@calcCostRRT);
+memCostRRT.CacheSize = 100;
+memCost = memoize(@calcCostPiecewiseLine);
 memCost.CacheSize = 100;
 
+% 2 = RRT, 1 = PWLine, 0 = Line
 tic
-seqCost([1,2],0,4,10,0);
+seqCost([1,2],0,4,10,2);
 toc
 
 [m,ind] = min(costs);
@@ -38,17 +41,17 @@ bestSeq = seqs(ind,:);
 gtInd = find(n == (sum(seqs == vertcat(dataset.gtCam)',2)));
 gtCost = costs(gtInd);
 
-%save('DynamicTraj','costs','seqs','gtInd');
+save('dynamicV2RRT','costs','seqs','gtInd');
 
 %% Visualize results
-algoDataset = dataset;
-for i=1:n
-    algoDataset(i).gtCam = bestSeq(i);
-end
-visualizeTwoDatasets(dataset, algoDataset, 'comparison')
-
-filename = strcat('Results/','testv2','.gif');
-drawResults(dataset,5,gtCost,filename);
+% algoDataset = dataset;
+% for i=1:n
+%     algoDataset(i).gtCam = bestSeq(i);
+% end
+% visualizeTwoDatasets(dataset, algoDataset, 'comparisonV2DynamicPWLine')
+% 
+% filename = strcat('Results/','dynamicV2PWLine','.gif');
+% drawResults(dataset,5,gtCost,filename);
 
 %% Helpers
 % draw compact result
@@ -110,44 +113,118 @@ end
 
 end
 
-% cost based on traj opt based movement
+% cost based on RRT
+function cost = calcCostRRT(initShot,endShot)
+global positions shotLengths fs;
+
+if (initShot == 0)
+    cost = 0;
+    return;
+end
+
+startPos = reshape(positions(initShot,:),[2,3]);
+startPos = startPos(:,2)';
+goalPos = reshape(positions(endShot,:),[2,3]);
+goalPos = goalPos(:,2)';
+
+% get number of shots camera j had to move in
+% eg., for [1,2,_], 1 has 3-1-1 = 1 shot to move
+numActiveShots = endShot - initShot - 1;     
+    
+paths = graph();
+paths = addnode(paths,num2str(startPos));
+maxPathLength = 0;
+
+% increase area size based on number of active shots
+for i=1:numActiveShots
+
+    shot = initShot + i;
+    curTime = shotLengths(shot) / 30;
+    maxPathLength = maxPathLength + curTime;
+    
+    % get current constraint as a polygon
+    constr = makeConstraint(positions(shot,:),fs(shot,:),[0 10 0 10]);    
+    
+    % populate graph via RRT
+    paths = RRT(paths,100,0.01,[0 10 0 10],constr,maxPathLength,goalPos);
+    
+    % don't keep going through active shots if we've already hit
+    % the goal
+    if (findnode(paths,num2str(goalPos)) ~= 0)
+        break;
+    end
+end
+
+% if we reached the goal in time, get shortest path from start to goal
+% of final graph
+goalNodeID = findnode(paths,num2str(goalPos));
+if(goalNodeID ~= 0)
+    goalEdges = outedges(paths,goalNodeID);
+    cost = min(paths.Edges{goalEdges,'Weight'});
+else
+    cost = -inf;
+end
+end
+
+% cost based on piecewise line based movement
 % setup of this function helps us m e m o i z e
-function cost = calcCostPairTrajOptMem(initShot,endShot)
+function cost = calcCostPiecewiseLine(initShot,endShot)
 
 global positions shotLengths fs;
 
-% camera has not appeared before
-if initShot == 0
+if (initShot == 0)
     cost = 0;
-else
-    
-    prevPos = reshape(positions(initShot,:),[2,3]);
-    curPos = reshape(positions(endShot,:),[2,3]);
-    conPos = reshape(positions(endShot-1,:),[2,3]);
-    
-    prevPos = prevPos(:,2)';
-    curPos = curPos(:,2)';
-    conPos = [conPos(:,3)'; fs(endShot-1,:); conPos(:,1)'];
-    
-    % use traj opt to get path feasibility
-    [optimalOut,~,pos] = pathOpt2D(prevPos,curPos,conPos);
-    time = optimalOut(1);
-    
-    % check if constraint intersection occurs, otherwise accumulate
-    % distance traveled, with penalty added based on how much over frame
-    % time we go
-    if (time == inf)
-        cost = -inf;
-        return;
-    else
-        d = 0;
-        for i=1:(size(pos,1)-1)
-            d = d + norm(pos(i+1,:) - pos(i,:));
-        end
+    return;
+end
+
+startPos = reshape(positions(initShot,:),[2,3]);
+startPos = startPos(:,2)';
+goalPos = reshape(positions(endShot,:),[2,3]);
+goalPos = goalPos(:,2)';
+
+% get number of shots camera j had to move in
+% eg., for [1,2,_], 1 has 3-1-1 = 1 shot to move
+numActiveShots = endShot - initShot - 1;     
+curArea = startPos;
         
-        alpha = 0.1;
-        cost = d; %+ (alpha * abs(time - (shotLengths(endShot)/30)));
+paths = graph();
+paths = addnode(paths,num2str(startPos));
+
+% increase area size based on number of active shots
+for i=1:numActiveShots
+
+    shot = initShot + i;
+    curTime = shotLengths(shot) / 30;
+    
+    % get current constraint as a polygon
+    constr = makeConstraint(positions(shot,:),fs(shot,:),[0 10 0 10]);
+    
+    % add to path graph
+    curArea = expandPolygon(curArea,curTime,constr,[0 10 0 10]);
+ 
+    % if there is only one node in the graph, spread in a circle,
+    % otherwise populate as normal
+    curIn = inpolygon(goalPos(1),goalPos(2),curArea(:,1),curArea(:,2));
+    
+    if((size(paths.Nodes,1) == 1) && ~curIn)
+        paths = initGraph(paths,curArea);
+    else
+        paths = populateGraph(paths,goalPos,curArea,curTime);
     end
+    
+    % don't keep going through active shots if we've already hit the goal
+    if (curIn)
+        break;
+    end
+end
+
+% if we reached the goal in time, get shortest path from start to goal
+% of final graph
+if(findnode(paths,num2str(goalPos)) ~= 0)
+    [~,cost] = shortestpath(paths,findnode(paths,num2str(startPos)), ...
+        findnode(paths,num2str(goalPos)));
+else
+    cost = -inf;
 end
 
 end
@@ -260,6 +337,62 @@ if (in ~= 0)
 end
 end
 
+% init graph spread
+function [paths] = initGraph(paths,curArea)
+    % add a ray from the center node to each vertex in the current area,
+    % like spokes
+    centerNode = paths.Nodes{1,'Name'};
+    centerNode = str2num(cell2mat(centerNode));  
+    for index = 1:size(curArea,1)       
+        curPt = curArea(index,:);
+        totalDist = norm(curPt - centerNode);
+        
+        % add node if it isn't already in the graph
+        if (findnode(paths,num2str(curPt)) == 0)
+            
+            paths = addnode(paths,num2str(curPt));
+            paths = addedge(paths,findnode(paths,num2str(centerNode)), ...
+                findnode(paths,num2str(curPt)),totalDist);
+        end
+    end
+end
+
+% add to graph if we are past the initial population
+function [pathsOut] = populateGraph(paths,goalPos,curArea,curTime)
+% iterate over the nodes of the graph, and all vertices at the edge of the
+% current area polygon. add edges to either the goal if it is within
+% the current area
+in = inpolygon(goalPos(1),goalPos(2),curArea(:,1),curArea(:,2));
+eps = 0.0001;
+pathsOut = paths;
+
+for i = 1:size(paths.Nodes,1)
+    
+    curNode = paths.Nodes{i,'Name'};
+    curNode = str2num(cell2mat(curNode));
+    
+    for j = 1:size(curArea,1)    
+        % check if goal is within current area
+        if(in)
+            newPt = goalPos;
+        else
+            newPt = curArea(j,:);
+        end
+        
+        % check if it's possible to travel to the new point in time
+        dist = norm(newPt - curNode);
+        if(dist <= (curTime + eps))
+            % add goal node if it isn't already in the graph
+            if (findnode(pathsOut,num2str(newPt)) == 0)
+                pathsOut = addnode(pathsOut,num2str(newPt));
+            end
+            
+            pathsOut = addedge(pathsOut,i,findnode(pathsOut,num2str(newPt)),dist);
+        end
+    end
+end
+end
+
 % draw triangle to represent the FOV of the constraint camera
 function [pts] = makeConstraint(pos,f,sceneSize)
 
@@ -313,10 +446,36 @@ end
 
 end
 
+% check that nothing is in the new cam's FOV
+function cost = checkFOV(sequence)
+global positions fs;
+
+shot = size(sequence,2);
+constr = makeConstraint(positions(shot,:),fs(shot,:),[0 10 0 10]);
+in = 0;
+
+% iterate through all active cameras, skipping the active FOV
+for j=1:max(sequence)
+    if (j == sequence(end))
+        continue;
+    end
+    currentIndex = find(sequence == j,1,'last');
+    curPt = positions(currentIndex,3:4);
+    in = in + inpolygon(curPt(1),curPt(2),constr(:,1),constr(:,2));
+end
+
+if (in ~= 0)
+    disp('Sequence invalid, camera in new FOV');
+    cost = -inf;
+else
+    cost = 0;
+end
+end
+
 % build a tree that keeps track of cost of each walk/sequence
 function [] = seqCost(curSeq,curCost,k,n,memo)
 
-global costs seqs memCost;
+global costs seqs memCost memCostRRT;
 
 % base cases
 if (curCost == -inf)
@@ -326,7 +485,7 @@ elseif (size(curSeq,2) == n)
     costs = [costs curCost];
     seqs = [seqs; curSeq];
     % testing
-    %size(costs)
+    size(costs)
     
     % recursive case
 else
@@ -339,11 +498,15 @@ else
         if (memo == 1)
             curLen = length(curSeq) + 1;
             nextCost = memCost(lastAppearance(curLen,[curSeq i]),curLen);
+        elseif (memo == 2)
+            curLen = length(curSeq) + 1;
+            nextCost = memCostRRT(lastAppearance(curLen,[curSeq i]),curLen);
         else
             nextCost = calcCostPair([curSeq i]);
         end
         
-        seqCost([curSeq i],curCost + nextCost,k,n,memo);
+        additionalCost = checkFOV([curSeq i]);
+        seqCost([curSeq i],curCost + nextCost + additionalCost,k,n,memo);
         
     end
 end

@@ -15,7 +15,7 @@
 
 %% Function
 % takes a graph as init
-function [G] = RRT(G,K,qDelta,sceneSize,constraint,maxPath,qInit)
+function [G] = RRT(G,K,qDelta,sceneSize,constraint,maxPath,goal)
 % using pseudocode from https://en.wikipedia.org/wiki/Rapidly-exploring_random_tree
 
 %figure(2);
@@ -23,14 +23,12 @@ function [G] = RRT(G,K,qDelta,sceneSize,constraint,maxPath,qInit)
 
 for k=1:K
     
-    qRand = getRandConf([],sceneSize,constraint,[qInit(1) qInit(2)],maxPath);   
+    qRand = getRandConf(goal,sceneSize,constraint);   
     qNear = nearestVertex(qRand,G);
-    qNew = newConf(qNear,qRand,qDelta,constraint);
-    
+    qNew = newConf(qNear,qRand,qDelta,constraint); 
     %scatter(qRand(1),qRand(2),'x'); hold on;
     
-    if(~isempty(qNew))  
-        
+    if(~isempty(qNew))     
         % accumulate distance traveled as edge weights
         dist = norm(qNew - qNear);
         [~,ind2] = findedge(G);
@@ -43,12 +41,35 @@ for k=1:K
             totalDist = G.Edges.Weight(newInd) + dist;
         end
         
+        % check if we can hit the goal in time
+        if (isequal(qRand,goal))
+            distGoal = norm(goal - qNear); 
+            
+            if (isempty(newInd))
+                tmpDist = distGoal;
+            else
+                tmpDist = G.Edges.Weight(newInd) + distGoal;
+            end
+
+            if (tmpDist <= maxPath)
+                totalDist = tmpDist;
+                qNew = qRand;
+            end 
+        end
+          
         % check if total distance for path is allowed
         if (totalDist <= maxPath)
             
-            G = addnode(G,num2str(qNew));
-            G = addedge(G,findnode(G,num2str(qNear)), ... 
-                          findnode(G,num2str(qNew)),totalDist);
+            if(findnode(G,num2str(qNew)) == 0)
+                G = addnode(G,num2str(qNew));
+            end
+            
+            % add edge if it doesn't already exist
+            nearNode = findnode(G,num2str(qNear));
+            newNode = findnode(G,num2str(qNew));
+            if (findedge(G,nearNode,newNode) == 0)
+                G = addedge(G,nearNode,newNode,min(totalDist));
+            end
             
             %scatter(qNew(1),qNew(2),'b'); hold on;
             %plot([qNew(1) qNear(1)],[qNew(2) qNear(2)]); hold on;
@@ -58,35 +79,9 @@ end
 
 end
 
-% qInit is an x,y position in space
-function [G] = myRRT(qInit,K,qDelta,goal,sceneSize,constraint)
-% using pseudocode from https://en.wikipedia.org/wiki/Rapidly-exploring_random_tree
-G = graph();
-G = addnode(G,num2str(qInit));
-
-scatter([qInit(1) goal(1)],[qInit(2) goal(2)],'r'); hold on;
-
-for k=1:K
-    
-    qRand = getRandConf(goal,sceneSize,constraint);
-    scatter(qRand(1),qRand(2),'x'); hold on;
-    
-    qNear = nearestVertex(qRand,G);
-    qNew = newConf(qNear,qRand,qDelta,constraint);
-    
-    if(~isempty(qNew))  
-        G = addnode(G,num2str(qNew));
-        scatter(qNew(1),qNew(2),'b'); hold on;
-        
-        G = addedge(G,findnode(G,num2str(qNear)),findnode(G,num2str(qNew)));
-        plot([qNew(1) qNear(1)],[qNew(2) qNear(2)]); hold on;
-    end
-end
-end
-
 % returns a random point in the scene area that is not in the constraint
 % constraint- mx2 matrix of the vertices defining a polygon 
-function [q] = getRandConf(goal,sceneSize,constraint,init,radius)
+function [q] = getRandConf(goal,sceneSize,constraint)
 
 x1 = sceneSize(1);
 x2 = sceneSize(2);
@@ -98,18 +93,13 @@ goodPt = false;
 while (goodPt == false)
     
     % skew distribution so 10% of the time, we go to the goal position
-    if (~isempty(goal))
-        x = rand();
-        if(x >= 0.9)
-            q = goal;
-        else
-            q = [(x1+(x1+x2)*rand(1,1)) (y1+(y1+y2)*rand(1,1))];
-        end
+    x = rand();
+    if(x >= 0.9)
+        q = goal;
     else
-        %q = [(x1+(x1+x2)*rand(1,1)) (y1+(y1+y2)*rand(1,1))];
-        q = randPtInCircle(init(1),init(2),radius);
+        q = [(x1+(x1+x2)*rand(1,1)) (y1+(y1+y2)*rand(1,1))];
     end
-    
+
     % test if q is in the constraint
     if (isempty(constraint))
         goodPt = true;
@@ -149,13 +139,4 @@ function [q] = newConf(qNear,qRand,qDelta,constraint)
             q = [];
         end
     end
-end
-
-function [out] = randPtInCircle(x,y,rad)
-% from https://www.mathworks.com/matlabcentral/answers/294-generate-random-points-inside-a-circle
-a = 2*pi*rand;
-r = sqrt(rand);
-xOut = (rad*r)*cos(a)+x;
-yOut = (rad*r)*sin(a)+y;
-out = [xOut yOut];
 end
