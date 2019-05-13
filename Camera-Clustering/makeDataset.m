@@ -7,8 +7,8 @@
 % camera can only move within circle rad 4 between frames
 % cameras must all be pointing at the set, aka the top line of the scene
 % hard code initial positions of all 4 cameras to spread them out
-close all; clearvars;
-
+%close all; clearvars;
+function [dataset] = makeDataset()
 %% Setup
 n = 10;
 k = 4;
@@ -146,8 +146,8 @@ for curShot = 1:n
    dataset(curShot).gtCam = newGT;
 end
 
-save('datasetv1','dataset');
-
+%save('datasetv1','dataset');
+end
 %% Helpers
 function [out] = isBadPosition(curPos, constrP, constrF)
 % check if the current position is within the constraint

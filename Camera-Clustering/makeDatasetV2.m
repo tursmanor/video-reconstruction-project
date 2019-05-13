@@ -1,8 +1,8 @@
 % Dataset generation that has an associated valid area of movement that
 % changes at each time increment for each non-shooting camera
-close all; clearvars;
+%close all; clearvars;
 
-% TODO
+function [dataset] = makeDatasetV2()
 
 global nope;
 nope = 0;
@@ -84,7 +84,7 @@ for curShot = 2:n
     % first case should never happen, so add a nope clause
     if (inpolygon(pos(1,:),pos(2,:),curConstraint(:,1),curConstraint(:,2)))
         nope = 1;
-        disp('nope');
+        disp('nope, FOV problem');
     end
     
     [activeCamPos] = activeCameras(k,dataset,curShot);
@@ -108,7 +108,7 @@ for curShot = 2:n
     % check again in case camera changed
     if (inpolygon(pos(1,:),pos(2,:),curConstraint(:,1),curConstraint(:,2)))
         nope = 1;
-        disp('nope');
+        disp('nope, FOV problem');
     end
     
     dataset(curShot).pos = pos;
@@ -132,9 +132,15 @@ for curShot = 2:n
     %     end
 end
 
+if (nope == 1)
+    dataset = 0;
+    return;
+    %save('datasetv2-2','dataset');
+end
+
 %% Refactor numbering
 % refactor camera numbering so that it aligns with clustering expectations
-numCams = max(vertcat(dataset.gtCam));
+numCams = length(unique(vertcat(dataset.gtCam)));
 assignments = zeros(2,numCams);
 assignments(1,1) = dataset(1).gtCam;
 assignments(2,1) = 1;
@@ -166,9 +172,8 @@ for curShot = 1:n
     dataset(curShot).A = newA;
 end
 
-if (nope == 0)
-    save('datasetv2-2','dataset');
 end
+
 %% Helpers
 % returns true if current camera's FOV doesn't see any other active cameras
 function [out] = isGoodPosition(k,pos,f,sceneSize,activeCamPos,curCam)
@@ -227,20 +232,15 @@ if (ind == 0)
     [pos,f] = initCamPosition(curCam,fAll,sensorWidth);
     areas{curCam} = pos(:,2)';
 else
-    %loop intil all points for the camera lie within the polygon
+    %loop until all points for the camera lie within the polygon
     curArea = areas{curCam};
     goodPoints = 0;
     while(goodPoints ~= 1)
         
         [pos,f] = makeCamPosition(curCam,fAll,sensorWidth,areas,sceneSize);
+        in = inpolygon(pos(1,2),pos(2,2),curArea(:,1),curArea(:,2));
         
-        in = 0;
-        for i=1:3
-            in = in + inpolygon(pos(1,i),pos(2,i),curArea(:,1),curArea(:,2));
-        end
-        in = in + inpolygon(f(1),f(2),curArea(:,1),curArea(:,2));
-        
-        if (in == 4)
+        if (in)
             goodPoints = 1;
         end
     end

@@ -1,13 +1,18 @@
 %% Greedy clustering for V2 dataset
-close all; clearvars;
-
+%close all; clearvars;
 %% Setup
-load datasetv2-2.mat
+%load datasetv2-2.mat
+
+% method = 0, line
+% method = 1, pw line
+% method = 2, RRT
+function [out, cost] = greedySolnV2(dataset,method)
 
 n = size(dataset,2);
 out = zeros(1,n);
 sceneSize = [0 10 0 10];
 badOutput = 0;
+cost = 0;
 
 % first two frames are cams 1 and 2
 out(1) = 1;
@@ -23,16 +28,21 @@ for i=3:n
     prevCam = out(i-1);
     
     % move all current cameras to new position
-    [opt,bestCam] = rrtOutput(prevCam,cams,ind,dataset,i,sceneSize);
-    %[opt,bestCam] = piecewiseLineOutput(prevCam,cams,ind,dataset,i,sceneSize);
-    %[opt,bestCam] = lineOutput(prevCam,cams,ind,dataset,i,sceneSize);
-        
+    if (method == 2)
+        [opt,bestCam] = rrtOutput(prevCam,cams,ind,dataset,i,sceneSize);
+    elseif (method == 1)
+        [opt,bestCam] = piecewiseLineOutput(prevCam,cams,ind,dataset,i,sceneSize);
+    else
+        [opt,bestCam] = lineOutput(prevCam,cams,ind,dataset,i,sceneSize);
+    end
+         
     % check versus some time threshold to determine whether or not to
     % assign shot to an existing camera or a new camera
     if (opt(1) ~= inf)
         if (bestCam == 0), disp('BAD'),end
         out(i) = bestCam;
         ind(bestCam) = i;
+        cost = cost + opt;
     else
         cams = [cams cams(end)+1];
         ind = [ind i];
@@ -59,14 +69,20 @@ for i=3:n
 end
 
 % make full dataset with new output labeling
-algoOut = dataset;
-for i=1:n
-    algoOut(i).gtCam = out(i);
-end
-dataset = algoOut;
+% algoOut = dataset;
+% for i=1:n
+%     algoOut(i).gtCam = out(i);
+% end
+% dataset = algoOut;
+% 
+% if (badOutput == 0)
+%     save('greedyV2RRT','dataset');
+% end
 
-if (badOutput == 0)
-    save('greedyV2RRT','dataset');
+if (badOutput == 1)
+    out = zeros(1,10);
+    cost = inf;
+end
 end
 
 %% Helpers
@@ -116,7 +132,7 @@ for j=cams
             fill(curArea(:,1),curArea(:,2),'r','FaceAlpha',0.1); hold on;
             
             % populate graph via RRT
-            paths = RRT(paths,100,0.8,sceneSize,constr,maxPathLength,goalPos);
+            paths = RRT(paths,200,0.01,sceneSize,constr,maxPathLength,goalPos);
             
             % don't keep going through active shots if we've already hit
             % the goal
@@ -349,8 +365,7 @@ for i = 1:size(paths.Nodes,1)
                 pathsOut = addnode(pathsOut,num2str(newPt));
             end
             
-            pathsOut = addedge(pathsOut,findnode(pathsOut,num2str(curNode)), ...
-                findnode(pathsOut,num2str(newPt)),dist);
+            pathsOut = addedge(pathsOut,i,findnode(pathsOut,num2str(newPt)),dist);
             
             scatter(newPt(1),newPt(2),'r'); hold on;
             plot([newPt(1) curNode(1)],[newPt(2) curNode(2)]); hold on;

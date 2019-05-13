@@ -1,11 +1,14 @@
 %% Dynamic setup for clustering
-close all; clearvars;
+%close all; clearvars;
 %clearAllMemoizedCaches
+
+function [seqs,costs] = dynamicSoln(dataset,method)
+clearAllMemoizedCaches
 
 %% Load data
 global positions shotLengths fs;
 
-load 'datasetv1.mat';
+%load 'datasetv1.mat';
 n = length(dataset);
 positions = zeros(n,6);
 shotLengths = zeros(n,1);
@@ -28,27 +31,28 @@ memCost = memoize(@calcCostPairTrajOptMem);
 memCost.CacheSize = 100;
 
 tic
-seqCost([1,2],0,4,10,1);
+seqCost([1,2],0,4,10,method);
 toc
 
-[m,ind] = min(costs);
-bestSeq = seqs(ind,:);
+% [m,ind] = min(costs);
+% bestSeq = seqs(ind,:);
+% 
+% % get GT cost
+% gtInd = find(n == (sum(seqs == vertcat(dataset.gtCam)',2)));
+% gtCost = costs(gtInd);
 
-% get GT cost
-gtInd = find(n == (sum(seqs == vertcat(dataset.gtCam)',2)));
-gtCost = costs(gtInd);
-
-save('dynamicV1Traj','costs','seqs','gtInd');
+%save('dynamicV1Traj','costs','seqs','gtInd');
+end
 
 %% Visualize results
-algoDataset = dataset;
-for i=1:n
-    algoDataset(i).gtCam = bestSeq(i);
-end
-visualizeTwoDatasets(dataset, algoDataset, 'comparisonV1DynamicTraj')
-
-filename = strcat('Results/','dynamicV1Traj','.gif');
-drawResults(dataset,5,gtCost,filename);
+% algoDataset = dataset;
+% for i=1:n
+%     algoDataset(i).gtCam = bestSeq(i);
+% end
+% visualizeTwoDatasets(dataset, algoDataset, 'comparisonV1DynamicTraj')
+% 
+% filename = strcat('Results/','dynamicV1Traj','.gif');
+% drawResults(dataset,5,gtCost,filename);
 
 %% Helpers
 % draw compact result
@@ -113,7 +117,7 @@ end
 % cost based on traj opt based movement
 % setup of this function helps us m e m o i z e
 function cost = calcCostPairTrajOptMem(initShot,endShot)
-global positions fs;
+global positions fs shotLengths;
 
 % camera has not appeared before
 if initShot == 0
@@ -141,7 +145,11 @@ else
         for i=1:(size(pos,1)-1)
             d = d + norm(pos(i+1,:) - pos(i,:));
         end
-        cost = d;
+        if (d <=  (shotLengths(endShot-1) / 30))
+            cost = d;
+        else
+            cost = -inf;
+        end
     end
 end
 end

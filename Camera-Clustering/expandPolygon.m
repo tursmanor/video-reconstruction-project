@@ -2,6 +2,7 @@
 % better polygon
 function [output]= expandPolygon(curPolygon,radius,constraint,sceneSize)
 global nope;
+digits(10);
 
 allPts = [];
 makeLine =@(x,x1,y1,x2,y2) ((y2 - y1)/(x2 - x1)) * (x - x1) + y1;
@@ -31,7 +32,7 @@ numInt = size(intersection,1);
 if (isempty(intersection) || numInt == 1)
     output = newPolygon;
 elseif (numInt > 2)
-    disp('nope')
+    disp('nope, more than 2 intersections')
     nope = 1;
     output = newPolygon;
 else
@@ -65,16 +66,25 @@ else
         % check if an intersection point lies on the line segment between
         % the current and next point. if it does, remove if from the list
         % of intersection points
-        approxEqual = 0;
         if(numInt > 0)
             for j=1:numInt
+                approxEqual = 0;
                 curIntPt = intersection(j,:);
                 y = makeLine(curIntPt(1),curPt(1),curPt(2),nextPt(1),nextPt(2));
-                approxEqual = abs(curIntPt(2) - y) <= 0.0001;
                 
-                curIntPt = round(curIntPt,4);
-                nextPt = round(nextPt,4);
-                curPt = round(curPt,4);
+                if (round(y,4) == round(curIntPt(2),4))     
+                    maxPtX = max(curPt(1),nextPt(1));
+                    minPtX = min(curPt(1),nextPt(1));
+                    maxPtY = max(curPt(2),nextPt(2));
+                    minPtY = min(curPt(2),nextPt(2));
+                    
+                    approxEqual = ((curIntPt(1) <= maxPtX) && ...
+                                   (curIntPt(1) >= minPtX) && ...
+                                   (curIntPt(2) <= maxPtY) && ...
+                                   (curIntPt(2) >= minPtY));
+                end
+                
+                curIntPt = round(curIntPt,2);
                 
                 % vertical line check
                 if ((nextPt(1) == curPt(1)) && (curIntPt(1) == curPt(1)))
@@ -102,7 +112,7 @@ else
                     inConstraint = inConstraint + 1;
                     newPolygon2 = [newPolygon2; curIntPt];
                     intersection(j,:) = [];
-                    numInt = numInt - 1;
+                    numInt = numInt - 1; 
                     break;
                 end
             end
@@ -111,14 +121,17 @@ else
         % if so, nextPt is not added to the new polygon, and we throw up a flag
         if (inConstraint == 0)
             newPolygon2 = [newPolygon2; nextPt];
+            
         elseif (inConstraint == 1)
             % add the tip of the FOV if it's inside the current polygon
             in = inpolygon(constraint(1,1),constraint(1,2),newPolygon(:,1),newPolygon(:,2));
             lastPt = newPolygon2(end,:);
+            
             if(in && ~addedFOVPt)
                 newPolygon2 = [newPolygon2; populateLine(makeLine,lastPt,constraint(1,:))];
                 addedFOVPt = 1;
             end
+            
             if (~addedLine)
                 if(in)
                     lastPt = constraint(1,:);
@@ -126,32 +139,19 @@ else
                 newPolygon2 = [newPolygon2; populateLine(makeLine,lastPt,intersection)];
                 addedLine = 1;
             end
+            
         elseif (inConstraint == 2)
             % turn off the flag after we've passed the constraint a second time
             inConstraint = 0;
-            newPolygon2 = [newPolygon2; nextPt];
+            %curInd = curInd + 1;
         end
         
         curPt = nextPt;
     end
     
-    output = newPolygon2;
-    
-    badInd = [];
-    % pruning stray edges
-    for i=1:size(output,1)
-        curPt = output(i,:);
-        [in,on] = inpolygon(curPt(1),curPt(2),constraint(:,1),constraint(:,2));
-        if(in && ~on)
-            if (sum(ismember(tmpInt,curPt,'rows')) == 0)
-                badInd = [badInd i];
-            end
-        end
-    end
-    output(badInd,:) = [];
-    
+    output = newPolygon2;  
 end
-%
+
 % figure(3);
 % clf;
 % fill(output(:,1),output(:,2),'r','FaceAlpha',0.2); hold on;
@@ -159,7 +159,6 @@ end
 % scatter(curPolygon(:,1),curPolygon(:,2)); hold on;
 % scatter(output(:,1),output(:,2)); hold on;
 % fill(constraint(:,1),constraint(:,2),'b','FaceAlpha',0.2);
-%
 % disp('eh');
 
 end
@@ -168,7 +167,7 @@ end
 % radius [radius] to create a polygon
 function [pts] = samplePoints(center, radius)
 
-theta = pi/8;
+theta = pi/16;
 pts = [];
 curAngle = 0;
 while (curAngle < (2*pi))

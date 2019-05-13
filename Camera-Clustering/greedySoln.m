@@ -1,12 +1,16 @@
 %% Greedy setup for clustering
-clearvars; close all;
+%clearvars; close all;
+%load datasetv1.mat
 
-load datasetv1.mat
+% method = 0, line
+% method = 1, traj opt
+function [out,cost] = greedySoln(dataset,method)
 
 n = size(dataset,2);   
 out = zeros(1,n);
 sceneSize = [0 10 0 10];
 badOutput = 0;
+cost = 0;
 
 % first two frames are cams 1 and 2
 out(1) = 1;
@@ -20,9 +24,12 @@ for i=3:n
     prevCam = out(i-1);
     
     % move all current cameras to new position 
-    [opt,bestCam] = trajOptOutput(prevCam,dataset,cams,ind,i);
-    %[opt,bestCam] = lineOutput(prevCam,dataset,cams,ind,i,sceneSize);
-    
+    if (method == 1)
+        [opt,bestCam] = trajOptOutput(prevCam,dataset,cams,ind,i);
+    else
+        [opt,bestCam] = lineOutput(prevCam,dataset,cams,ind,i,sceneSize);
+    end
+       
     % check versus some time threshold to determine whether or not to
     % assign shot to an existing camera or a new camera
     thresh = (dataset(i-1).frame / 30);
@@ -30,6 +37,7 @@ for i=3:n
         if (bestCam == 0), disp('BAD'),end
         out(i) = bestCam;
         ind(bestCam) = i;
+        cost = cost + opt;
     else
         cams = [cams cams(end)+1];
         ind = [ind i];
@@ -56,18 +64,23 @@ for i=3:n
 end
 
 % make full dataset with new output labeling
-algoOut = dataset;
-for i=1:n
-    algoOut(i).gtCam = out(i);
-end
-dataset = algoOut;
+% algoOut = dataset;
+% for i=1:n
+%     algoOut(i).gtCam = out(i);
+% end
+% dataset = algoOut;
+% if (badOutput == 0)
+%     save('greedyV1Traj','dataset');
+% end
 
-if (badOutput == 0)
-    save('greedyV1Traj','dataset');
+if (badOutput == 1)
+    out = zeros(1,10);
+    cost = inf;
+end
+
 end
 
 %% Helpers
-
 % trajectory optimization
 function [opt,bestCam] = trajOptOutput(prevCam,dataset,cams,ind,curShot)
 opt = inf;

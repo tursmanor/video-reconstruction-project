@@ -1,11 +1,14 @@
 %% Dynamic clustring for V2 dataset
-close all; clearvars;
+%close all; clearvars;
+
+function [seqs,costs] = dynamicSolnV2(dataset,method)
+
 clearAllMemoizedCaches
 
 %% Load data
 global positions shotLengths fs;
 
-load 'datasetv2.mat';
+%load 'datasetv2.mat';
 n = length(dataset);
 positions = zeros(n,6);
 shotLengths = zeros(n,1);
@@ -30,18 +33,19 @@ memCost = memoize(@calcCostPiecewiseLine);
 memCost.CacheSize = 100;
 
 % 2 = RRT, 1 = PWLine, 0 = Line
-tic
-seqCost([1,2],0,4,10,2);
-toc
+%tic
+seqCost([1,2],0,4,10,method);
+%toc
 
-[m,ind] = min(costs);
-bestSeq = seqs(ind,:);
+% [m,ind] = min(costs);
+% bestSeq = seqs(ind,:);
+% 
+% % get GT cost
+% gtInd = find(n == (sum(seqs == vertcat(dataset.gtCam)',2)));
+% gtCost = costs(gtInd);
 
-% get GT cost
-gtInd = find(n == (sum(seqs == vertcat(dataset.gtCam)',2)));
-gtCost = costs(gtInd);
-
-save('dynamicV2RRT','costs','seqs','gtInd');
+%save('dynamicV2RRT','costs','seqs','gtInd');
+end
 
 %% Visualize results
 % algoDataset = dataset;
@@ -277,7 +281,7 @@ if(indx ~= 0)
         if (norm(tmpEnd - startPos) > norm(goalPos - startPos))
             curEnd = goalPos;
             dist = norm(goalPos - startPos);
-            disp('Made it to goal');
+            %disp('Made it to goal');
             break;
         end
         
@@ -288,7 +292,7 @@ if(indx ~= 0)
         
         if (in && in2)
             dist = -inf;
-            disp('Both points in constraint');
+            %disp('Both points in constraint');
             break;
         end
         
@@ -299,7 +303,7 @@ if(indx ~= 0)
             dist = dist + norm(tmpEnd - curEnd);
             curEnd = tmpEnd;
         else
-            disp('Intersected constraint');
+            %disp('Intersected constraint');
             curEnd = intersection;
             dist = dist + norm(intersection - curEnd);
         end
@@ -332,7 +336,7 @@ for j=1:numCam
 end
 
 if (in ~= 0)
-    disp('Sequence invalid, camera in new FOV');
+    %disp('Sequence invalid, camera in new FOV');
     cost = -inf;
 end
 end
@@ -465,7 +469,7 @@ for j=1:max(sequence)
 end
 
 if (in ~= 0)
-    disp('Sequence invalid, camera in new FOV');
+    %disp('Sequence invalid, camera in new FOV');
     cost = -inf;
 else
     cost = 0;
@@ -485,7 +489,7 @@ elseif (size(curSeq,2) == n)
     costs = [costs curCost];
     seqs = [seqs; curSeq];
     % testing
-    size(costs)
+    %size(costs)
     
     % recursive case
 else
